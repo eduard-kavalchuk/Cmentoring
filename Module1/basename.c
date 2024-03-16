@@ -16,9 +16,6 @@
    Now the program returns the name of its binary (including file extension) no matter whether it is called with a relative or full path to that binary:
    >> ./a.out  -->  a.out
    >> ~/a.out  -->  a.out
-   
- * @param[in] void
- * @return Return type
  */
 int main(int argc, char** argv) {
 	printf("%s\n", basename(argv[0]));
