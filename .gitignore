@@ -1,3 +1,5 @@
 *.s
 a.out
 *.exe
+Makefile
+.gitignore
