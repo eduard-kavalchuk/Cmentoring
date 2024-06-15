@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "bst.h"
 
+static void traverse_(node_t root, int *array, int size, int *count);
+
 struct BinaryTreeNode {
 	int key;
 	struct BinaryTreeNode *left, *right;
@@ -14,19 +16,6 @@ node_t newNodeCreate(int value)
 	temp->key = value;
 	temp->left = temp->right = NULL;
 	return temp;
-}
-
-// Function to search for a node with a specific key in the
-// tree
-node_t searchNode(node_t root, int target)
-{
-	if (root == NULL || root->key == target) {
-		return root;
-	}
-	if (root->key < target) {
-		return searchNode(root->right, target);
-	}
-	return searchNode(root->left, target);
 }
 
 // Function to insert a node with a specific value in the
@@ -122,8 +111,22 @@ void clear(node_t *root)
     if (*root != NULL) {
 		clear(&(*root)->left);
 		clear(&(*root)->right);
-        printf("Deleting %d\n", (*root)->key);
         free(*root);
         *root = NULL;
+	}
+}
+
+void traverse(node_t root, int *array, int size)
+{
+    int count = 0;
+    traverse_(root, array, size, &count);
+}
+
+static void traverse_(node_t root, int *array, int size, int *count)
+{
+    if (root != NULL) {
+		traverse_(root->left, array, size, count);
+        array[(*count)++] = root->key;
+		traverse_(root->right, array, size, count);
 	}
 }
