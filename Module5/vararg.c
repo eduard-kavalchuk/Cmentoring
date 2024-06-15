@@ -17,7 +17,7 @@ double sum(int count, ...)
 	
 	va_start(ap, count);
 	for (int i = 0; i < count; i++) {
-		sum += va_arg(ap, double);;
+		sum += va_arg(ap, double);
 	}
 	va_end(ap);
 	
