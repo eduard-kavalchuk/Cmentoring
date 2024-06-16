@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include "bst.h"
 
-static void traverse_(node_t root, int *array, int size, int *count);
+static void bst_toArray_(node_t root, int *array, int size, int *count);
+static node_t newNodeCreate(int value);
 
 struct BinaryTreeNode {
 	int key;
 	struct BinaryTreeNode *left, *right;
 };
 
-// Function to create a new node with a given value
-node_t newNodeCreate(int value)
+static node_t newNodeCreate(int value)
 {
 	node_t temp = (node_t)malloc(sizeof(struct BinaryTreeNode));
 	temp->key = value;
@@ -18,69 +18,62 @@ node_t newNodeCreate(int value)
 	return temp;
 }
 
-// Function to insert a node with a specific value in the
-// tree
-node_t insertNode(node_t node, int value)
+void bst_insertNode(node_t *node, int value)
 {
-	if (node == NULL) {
-		return newNodeCreate(value);
+	if (*node == NULL) {
+		*node = newNodeCreate(value);
 	}
-	if (value < node->key) {
-		node->left = insertNode(node->left, value);
+	if (value < (*node)->key) {
+		bst_insertNode(&(*node)->left, value);
 	}
-	else if (value > node->key) {
-		node->right = insertNode(node->right, value);
+	else if (value > (*node)->key) {
+		bst_insertNode(&(*node)->right, value);
 	}
-	return node;
 }
 
-// Function to perform in-order traversal
-void inOrder(node_t root)
+void bst_print(node_t root)
 {
 	if (root != NULL) {
-		inOrder(root->left);
+		bst_print(root->left);
 		printf("%d ", root->key);
-		inOrder(root->right);
+		bst_print(root->right);
 	}
 }
 
-// Function to find the minimum value
-int findMin(node_t root, int *storage)
+int bst_findMin(node_t root, int *storage)
 {
 	if (root == NULL) {
 		return -1;
 	}
 	else if (root->left != NULL) {
-		return findMin(root->left, storage);
+		return bst_findMin(root->left, storage);
 	}
     *storage = root->key;
 	return 0;
 }
 
-// Function to find the maximum value
-int findMax(node_t root, int *storage)
+int bst_findMax(node_t root, int *storage)
 {
 	if (root == NULL) {
 		return -1;
 	}
 	else if (root->right != NULL) {
-		return findMax(root->right, storage);
+		return bst_findMax(root->right, storage);
 	}
     *storage = root->key;
 	return 0;
 }
 
-// Function to delete a node from the tree
-node_t delete(node_t root, int x)
+node_t bst_delete(node_t root, int x)
 {
 	if (root == NULL)
 		return NULL;
 
 	if (x > root->key) {
-		root->right = delete (root->right, x);
+		root->right = bst_delete (root->right, x);
 	}
 	else if (x < root->key) {
-		root->left = delete (root->left, x);
+		root->left = bst_delete (root->left, x);
 	}
 	else {
 		if (root->left == NULL && root->right == NULL) {
@@ -100,34 +93,34 @@ node_t delete(node_t root, int x)
 			return temp;
 		}
 		else {
-            findMin(root->right, &root->key);
-			root->right = delete(root->right, root->key);
+            bst_findMin(root->right, &root->key);
+			root->right = bst_delete(root->right, root->key);
 		}
 	}
 	return root;
 }
 
-void clear(node_t *root)
+void bst_clear(node_t *root)
 {
-    if (*root != NULL) {
-		clear(&(*root)->left);
-		clear(&(*root)->right);
-        free(*root);
-        *root = NULL;
-	}
+    if (*root == NULL) return;
+    
+    bst_clear(&(*root)->left);
+    bst_clear(&(*root)->right);
+    free(*root);
+    *root = NULL;
 }
 
-void traverse(node_t root, int *array, int size)
+void bst_toArray(node_t root, int *array, int size)
 {
     int count = 0;
-    traverse_(root, array, size, &count);
+    bst_toArray_(root, array, size, &count);
 }
 
-static void traverse_(node_t root, int *array, int size, int *count)
+static void bst_toArray_(node_t root, int *array, int size, int *count)
 {
-    if (root != NULL) {
-		traverse_(root->left, array, size, count);
-        array[(*count)++] = root->key;
-		traverse_(root->right, array, size, count);
-	}
+    if (root == NULL) return;
+    
+    bst_toArray_(root->left, array, size, count);
+    array[(*count)++] = root->key;
+    bst_toArray_(root->right, array, size, count);
 }

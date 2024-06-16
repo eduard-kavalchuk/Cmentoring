@@ -30,4 +30,9 @@ int main(void)
     printf("\n");
     set_delete(set, 12);
     set_print(set);
+    int x;
+    set_findMax(set, &x);
+    printf("%d\n", x);
+    set_findMin(set, &x);
+    printf("%d\n", x);
 }
