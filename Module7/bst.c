@@ -45,27 +45,29 @@ void inOrder(node_t root)
 }
 
 // Function to find the minimum value
-void *findMin(node_t root)
+int findMin(node_t root, int *storage)
 {
 	if (root == NULL) {
-		return NULL;
+		return -1;
 	}
 	else if (root->left != NULL) {
-		return findMin(root->left);
+		return findMin(root->left, storage);
 	}
-	return &root->key;
+    *storage = root->key;
+	return 0;
 }
 
 // Function to find the maximum value
-void *findMax(node_t root)
+int findMax(node_t root, int *storage)
 {
 	if (root == NULL) {
-		return NULL;
+		return -1;
 	}
 	else if (root->right != NULL) {
-		return findMax(root->right);
+		return findMax(root->right, storage);
 	}
-	return &root->key;
+    *storage = root->key;
+	return 0;
 }
 
 // Function to delete a node from the tree
@@ -98,9 +100,8 @@ node_t delete(node_t root, int x)
 			return temp;
 		}
 		else {
-			node_t temp = findMin(root->right);
-			root->key = temp->key;
-			root->right = delete (root->right, temp->key);
+            findMin(root->right, &root->key);
+			root->right = delete(root->right, root->key);
 		}
 	}
 	return root;

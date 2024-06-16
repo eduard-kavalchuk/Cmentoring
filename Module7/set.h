@@ -13,9 +13,10 @@ void set_addAll(set_t set, int array[], int);
 void set_print(set_t set);
 void set_clear(set_t set);
 bool set_isEmpty(set_t set);
-int set_findMax(set_t set);
-int set_findMin(set_t set);
+int set_findMax(set_t set, int *storage);
+int set_findMin(set_t set, int *storage);
 int size(set_t set);
 void set_toArray(set_t set, int *array, int size);
+void set_delete(set_t set, int x);
 
 #endif

@@ -28,4 +28,6 @@ int main(void)
     for (int i = 0; i < SIZE; i++)
         printf("%d ", array[i]);
     printf("\n");
+    set_delete(set, 12);
+    set_print(set);
 }
