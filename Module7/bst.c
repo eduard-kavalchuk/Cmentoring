@@ -70,18 +70,17 @@ node_t bst_delete(node_t root, int x)
 		return NULL;
 
 	if (x > root->key) {
-		root->right = bst_delete (root->right, x);
+		root->right = bst_delete(root->right, x);
 	}
 	else if (x < root->key) {
-		root->left = bst_delete (root->left, x);
+		root->left = bst_delete(root->left, x);
 	}
 	else {
 		if (root->left == NULL && root->right == NULL) {
 			free(root);
 			return NULL;
 		}
-		else if (root->left == NULL
-				|| root->right == NULL) {
+		else if (root->left == NULL || root->right == NULL) {
 			node_t temp;
 			if (root->left == NULL) {
 				temp = root->right;
