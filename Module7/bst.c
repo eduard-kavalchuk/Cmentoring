@@ -4,6 +4,7 @@
 
 static void bst_toArray_(node_t root, int *array, int size, int *count);
 static node_t newNodeCreate(int value);
+static void bst_getSize_(node_t root, int *count);
 
 struct BinaryTreeNode {
 	int key;
@@ -33,11 +34,11 @@ void bst_insertNode(node_t *node, int value)
 
 void bst_print(node_t root)
 {
-	if (root != NULL) {
-		bst_print(root->left);
-		printf("%d ", root->key);
-		bst_print(root->right);
-	}
+	if (root == NULL) return;
+    
+    bst_print(root->left);
+    printf("%d ", root->key);
+    bst_print(root->right);
 }
 
 int bst_findMin(node_t root, int *storage)
@@ -96,7 +97,6 @@ void bst_delete(node_t *root, int x)
 			bst_delete(&(*root)->right, (*root)->key);
 		}
 	}
-	//return root;
 }
 
 void bst_clear(node_t *root)
@@ -112,14 +112,36 @@ void bst_clear(node_t *root)
 void bst_toArray(node_t root, int *array, int size)
 {
     int count = 0;
+    
+    if (root == NULL) return;
+    
     bst_toArray_(root, array, size, &count);
 }
 
 static void bst_toArray_(node_t root, int *array, int size, int *count)
+{    
+    if (root != NULL) {
+        bst_toArray_(root->left, array, size, count);
+        array[(*count)++] = root->key;
+        bst_toArray_(root->right, array, size, count);
+    }
+}
+
+int bst_getSize(node_t root)
 {
-    if (root == NULL) return;
+    int count = 0;
     
-    bst_toArray_(root->left, array, size, count);
-    array[(*count)++] = root->key;
-    bst_toArray_(root->right, array, size, count);
+    if (root == NULL) return 0;
+    
+    bst_getSize_(root, &count);
+    return count;
+}
+
+static void bst_getSize_(node_t root, int *count)
+{
+    if (root != NULL) {
+        bst_getSize_(root->left, count);
+        (*count)++;
+        bst_getSize_(root->right, count);
+    }
 }

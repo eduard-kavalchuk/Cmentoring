@@ -10,5 +10,6 @@ int bst_findMax(node_t root, int *x);
 void bst_delete(node_t *root, int x);
 void bst_clear(node_t *root);
 void bst_toArray(node_t root, int *array, int size);
+int bst_getSize(node_t root);
 
 #endif

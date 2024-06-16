@@ -2,45 +2,32 @@
 #include "bst.h"
 #include "set.h"
 
-#define SIZE 5
+#define SIZE 10
+
+int count_duplicates(int array[], int size)
+{
+    set_t set = set_fromArray(array, size);
+    
+    return size - set_getSize(set);
+}
+
+void minmax(int array[], int size, int *min, int *max)
+{
+    set_t set = set_fromArray(array, size);
+    set_findMax(set, max);
+    set_findMin(set, min);
+}
 
 int main(void)
 {
-    int array[SIZE] = {1, 3, 2, 4, 6};
+    int array[SIZE] = {1, 3, 2, 4, 3, 6, 1, 3, 2, -5};
+    int min, max;
     
-    /*
-    int addon[3] = {111, 110, 109};
+    printf("number of duplicates: %d\n", count_duplicates(array, SIZE));
     
-    set_t set = set_fromArray(array, SIZE);
-    printf("size = %d\n", size(set));
-    set_addAll(set, addon, 3);
-    printf("size = %d\n", size(set));
-    set_add(set, -333);
-    printf("size = %d\n", size(set));
-    set_print(set);
-    printf("Min = %d\n", set_findMin(set));
-    printf("Max = %d\n", set_findMax(set));
-    */
-    
-    /*
-    set_t set = set_fromArray(array, SIZE);
-    set_toArray(set, array, SIZE);
-    for (int i = 0; i < SIZE; i++)
-        printf("%d ", array[i]);
-    printf("\n");
-    set_delete(set, 12);
-    set_print(set);
-    int x;
-    set_findMax(set, &x);
-    printf("%d\n", x);
-    set_findMin(set, &x);
-    printf("%d\n", x);
-    */
-    
-    set_t set = set_fromArray(array, SIZE);
-    set_print(set);
-    set_delete(set, 4);
-    set_print(set);
+    minmax(array, SIZE, &min, &max);
+    printf("min: %d\n", min);
+    printf("max: %d\n", max);
     
     return 0;
 }
