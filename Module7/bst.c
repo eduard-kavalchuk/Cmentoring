@@ -64,39 +64,39 @@ int bst_findMax(node_t root, int *storage)
 	return 0;
 }
 
-node_t bst_delete(node_t root, int x)
+void bst_delete(node_t *root, int x)
 {
-	if (root == NULL)
-		return NULL;
+	if (*root == NULL)
+		return;
 
-	if (x > root->key) {
-		root->right = bst_delete(root->right, x);
+	if (x > (*root)->key) {
+		bst_delete(&(*root)->right, x);
 	}
-	else if (x < root->key) {
-		root->left = bst_delete(root->left, x);
+	else if (x < (*root)->key) {
+		bst_delete(&(*root)->left, x);
 	}
 	else {
-		if (root->left == NULL && root->right == NULL) {
-			free(root);
-			return NULL;
+		if ((*root)->left == NULL && (*root)->right == NULL) {
+			free(*root);
+			*root = NULL;
 		}
-		else if (root->left == NULL || root->right == NULL) {
+		else if ((*root)->left == NULL || (*root)->right == NULL) {
 			node_t temp;
-			if (root->left == NULL) {
-				temp = root->right;
+			if ((*root)->left == NULL) {
+				temp = (*root)->right;
 			}
 			else {
-				temp = root->left;
+				temp = (*root)->left;
 			}
-			free(root);
-			return temp;
+			free(*root);
+			*root = temp;
 		}
 		else {
-            bst_findMin(root->right, &root->key);
-			root->right = bst_delete(root->right, root->key);
+            bst_findMin((*root)->right, &(*root)->key);
+			bst_delete(&(*root)->right, (*root)->key);
 		}
 	}
-	return root;
+	//return root;
 }
 
 void bst_clear(node_t *root)

@@ -79,5 +79,5 @@ void set_toArray(set_t set, int *array, int size)
 
 void set_delete(set_t set, int x)
 {
-    bst_delete(set->root, x);
+    bst_delete(&set->root, x);
 }

@@ -6,7 +6,7 @@
 
 int main(void)
 {
-    int array[SIZE] = {6, 2, 78, 9, 12};
+    int array[SIZE] = {1, 3, 2, 4, 6};
     
     /*
     int addon[3] = {111, 110, 109};
@@ -22,7 +22,7 @@ int main(void)
     printf("Max = %d\n", set_findMax(set));
     */
     
-    
+    /*
     set_t set = set_fromArray(array, SIZE);
     set_toArray(set, array, SIZE);
     for (int i = 0; i < SIZE; i++)
@@ -35,4 +35,12 @@ int main(void)
     printf("%d\n", x);
     set_findMin(set, &x);
     printf("%d\n", x);
+    */
+    
+    set_t set = set_fromArray(array, SIZE);
+    set_print(set);
+    set_delete(set, 4);
+    set_print(set);
+    
+    return 0;
 }
