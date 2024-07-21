@@ -45,15 +45,16 @@ int main(void)
     delete(listHead, 15);
     printList(listHead);
     
-    printf("Delete last\n");
-    delete(listHead, 13);
-    printList(listHead);
-    
-    printf("Delete first\n");
+    printf("Delete first (12)\n");
     delete(listHead, 12);
     printList(listHead);
     
-    printf("Delete middle\n");
+    
+    printf("Delete last (13)\n");
+    delete(listHead, 13);
+    printList(listHead);
+    
+    printf("Delete middle (11)\n");
     delete(listHead, 11);
     printList(listHead);
     
@@ -64,8 +65,29 @@ int main(void)
 
 void delete(struct LinkedListHead *listHead, int value)
 {   
-    
-    
+    struct LinkedList *prev = listHead->first, *curr = listHead->first;
+
+    while (curr != NULL) {
+        if (curr->value == value) {
+            if (curr == listHead->first) {
+                listHead->first = curr->next;
+            }
+            else if (curr == listHead->last) {
+                listHead->last = prev;
+                prev->next = NULL;
+            }
+            else {
+                prev->next = curr->next;
+            }
+            free(curr);
+            listHead->size--;
+            return;
+        }
+        else {
+            prev = curr;
+            curr = curr->next;
+        }
+    }
 }
 
 void insert(struct LinkedListHead *listHead, int position, int value)
@@ -76,11 +98,7 @@ void insert(struct LinkedListHead *listHead, int position, int value)
     struct LinkedList *list = (struct LinkedList *) malloc(sizeof(struct LinkedList));
     list->value = value;
     
-    if (position == 0) {
-        list->next = listHead->first;
-        listHead->first = list;
-    }
-    else if (listHead->size == position) {
+    if (listHead->size == position) {
         list->next = NULL;
         if(listHead->last != NULL) {
             listHead->last->next = list;
@@ -89,6 +107,10 @@ void insert(struct LinkedListHead *listHead, int position, int value)
             listHead->first = list;
         }
         listHead->last = list;
+    }
+    else if (position == 0) {
+        list->next = listHead->first;
+        listHead->first = list;
     }
     else {
         struct LinkedList *tmp = listHead->first;
@@ -122,7 +144,6 @@ void printList(struct LinkedListHead *listHead)
         printf("%d ", ptr->value);
         ptr = ptr->next;
     }
-    
     printf("\n");
 }
 
@@ -134,6 +155,5 @@ void clear(struct LinkedListHead *listHead)
         free(ptr);
         ptr = tmp->next;
     }
-    
 }
 
