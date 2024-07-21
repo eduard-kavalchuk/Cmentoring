@@ -21,40 +21,42 @@ void clear(struct LinkedListHead *listHead);
 void insert(struct LinkedListHead *listHead, int position, int value);
 void printList(struct LinkedListHead *listHead);
 void delete(struct LinkedListHead *listHead, int value);
-void pop(struct LinkedListHead *listHead);
 
 
 int main(void)
 {
     struct LinkedListHead *listHead = init();
+    printf("Create a list of integers from 0 to 9:\n");
     for(int i = 0; i < 10; i++) {
         append(listHead, i);
     }
     printList(listHead);
     
+    printf("Insert value 11 in position 4:\n");
     insert(listHead, 4, 11);
     printList(listHead);
     
+    printf("Insert value 12 to the head of the list:\n");
     insert(listHead, 0, 12);
     printList(listHead);
     
+    printf("Insert value 13 to the end of the list:\n");
     insert(listHead, listHead->size, 13);
     printList(listHead);
     
-    printf("Try to delete non-existent\n");
+    printf("Try to delete a non-existent value (15):\n");
     delete(listHead, 15);
     printList(listHead);
     
-    printf("Delete first (12)\n");
+    printf("Delete first value (12):\n");
     delete(listHead, 12);
     printList(listHead);
     
-    
-    printf("Delete last (13)\n");
+    printf("Delete last value (13):\n");
     delete(listHead, 13);
     printList(listHead);
     
-    printf("Delete middle (11)\n");
+    printf("Delete middle value (11):\n");
     delete(listHead, 11);
     printList(listHead);
     
