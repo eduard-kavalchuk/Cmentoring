@@ -3,29 +3,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct LinkedList {
+struct ListNode {
     int value;
-    struct LinkedList *next;
+    struct ListNode *next;
 };
 
-struct LinkedListHead {
+struct ListNodeHead {
     unsigned int size;
-    struct LinkedList *first;
-    struct LinkedList *last;
+    struct ListNode *first;
+    struct ListNode *last;
 };
 
 
-struct LinkedListHead *init(void);
-void append(struct LinkedListHead *listHead, int value);
-void clear(struct LinkedListHead *listHead);
-void insert(struct LinkedListHead *listHead, int position, int value);
-void printList(struct LinkedListHead *listHead);
-void delete(struct LinkedListHead *listHead, int value);
+struct ListNodeHead *init(void);
+void append(struct ListNodeHead *listHead, int value);
+void clear(struct ListNodeHead *listHead);
+void insert(struct ListNodeHead *listHead, int position, int value);
+void printList(struct ListNodeHead *listHead);
+void delete(struct ListNodeHead *listHead, int value);
 
 
 int main(void)
 {
-    struct LinkedListHead *listHead = init();
+    struct ListNodeHead *listHead = init();
     printf("Create a list of integers from 0 to 9:\n");
     for(int i = 0; i < 10; i++) {
         append(listHead, i);
@@ -65,9 +65,9 @@ int main(void)
     return 0;
 }
 
-void delete(struct LinkedListHead *listHead, int value)
+void delete(struct ListNodeHead *listHead, int value)
 {   
-    struct LinkedList *prev = listHead->first, *curr = listHead->first;
+    struct ListNode *prev = listHead->first, *curr = listHead->first;
 
     while (curr != NULL) {
         if (curr->value == value) {
@@ -92,12 +92,12 @@ void delete(struct LinkedListHead *listHead, int value)
     }
 }
 
-void insert(struct LinkedListHead *listHead, int position, int value)
+void insert(struct ListNodeHead *listHead, int position, int value)
 {   
     if (listHead->size < position)
         return;
     
-    struct LinkedList *list = (struct LinkedList *) malloc(sizeof(struct LinkedList));
+    struct ListNode *list = (struct ListNode *) malloc(sizeof(struct ListNode));
     list->value = value;
     
     if (listHead->size == position) {
@@ -115,7 +115,7 @@ void insert(struct LinkedListHead *listHead, int position, int value)
         listHead->first = list;
     }
     else {
-        struct LinkedList *tmp = listHead->first;
+        struct ListNode *tmp = listHead->first;
         for (int i = 0; i < position - 1; i++)
             tmp = tmp->next;
         list->next = tmp->next;
@@ -125,23 +125,23 @@ void insert(struct LinkedListHead *listHead, int position, int value)
     listHead->size++;
 }
 
-struct LinkedListHead *init(void)
+struct ListNodeHead *init(void)
 {
-    struct LinkedListHead *head = (struct LinkedListHead *) malloc(sizeof(struct LinkedListHead));
+    struct ListNodeHead *head = (struct ListNodeHead *) malloc(sizeof(struct ListNodeHead));
     head->size = 0;
     head->first = NULL;
     head->last = NULL;
     return head;
 }
 
-void append(struct LinkedListHead *listHead, int value)
+void append(struct ListNodeHead *listHead, int value)
 {
     insert(listHead, listHead->size, value);
 }
 
-void printList(struct LinkedListHead *listHead)
+void printList(struct ListNodeHead *listHead)
 {
-    struct LinkedList *ptr = listHead->first;
+    struct ListNode *ptr = listHead->first;
     while(ptr != NULL) {
         printf("%d ", ptr->value);
         ptr = ptr->next;
@@ -149,11 +149,11 @@ void printList(struct LinkedListHead *listHead)
     printf("\n");
 }
 
-void clear(struct LinkedListHead *listHead)
+void clear(struct ListNodeHead *listHead)
 {
-    struct LinkedList *ptr = listHead->first;
+    struct ListNode *ptr = listHead->first;
     while(ptr != NULL) {
-        struct LinkedList *tmp = ptr;
+        struct ListNode *tmp = ptr;
         free(ptr);
         ptr = tmp->next;
     }
