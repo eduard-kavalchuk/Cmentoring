@@ -6,11 +6,10 @@ struct GPIO_tag {
   union {
     unsigned char R;
     struct {
-      unsigned char  :4;
-      unsigned char bit0:1;
+      unsigned char bit0:2;
       unsigned char bit1:1;
       unsigned char bit2:1;
-      unsigned char bit3:1;
+      unsigned char     :4;
     } B;
   } PORT0;
 
@@ -33,9 +32,9 @@ int main(void) {
     
     struct GPIO_tag gpio;
     
-    gpio.PORT1.R = 2;
+    gpio.PORT0.R = 6;
     
-    printf("0x%x 0x%x", gpio.PORT1.B.bit0, gpio.PORT1.B.bit1);
+    printf("0x%x 0x%x", gpio.PORT0.B.bit0, gpio.PORT0.B.bit1);
     
     
     return 0;
