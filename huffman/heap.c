@@ -12,7 +12,8 @@ typedef struct Node Node;
 
 struct Node {
     int weight;
-    char character;
+    unsigned char character;
+    int isLeaf;
     Node *left;
     Node *right;
 };
@@ -196,7 +197,7 @@ Node* join(Node *node1, Node *node2)
 {
     Node *node = (Node *) calloc(1, sizeof(Node));
     node->weight = node1->weight + node2->weight;
-    node->character = 255;
+    node->isLeaf = 0;
     node->left = node1;
     node->right = node2;
     
@@ -253,7 +254,7 @@ int node2Cnt = 0;
 void make(char *str, Node *node) {
     if (node == NULL) return;
     
-    if (node->character != (char) 255) {
+    if (node->isLeaf) {
         Node2 *node2 = (Node2 *) calloc(1, sizeof(Node2));
         node2->character = node->character;
         
@@ -354,6 +355,7 @@ int main() {
         Node *node = (Node *) calloc(1, sizeof(Node));
         node->weight = input[i];
         node->character = i;
+        node->isLeaf = 1;
         insert_minheap(heap, *node);
     }
     
