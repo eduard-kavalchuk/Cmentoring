@@ -1,177 +1,58 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+/*
+    TODO
+    Уйти от типов Node2 и Node3, оставить только Node.
+*/
+
+#include "MinHeap.h"
 
 static char *str = "preved medved";
-char input[255];
-char output[255];
+char output[128];
 int output_ptr;
 
-typedef struct MinHeap MinHeap;
+
 typedef struct Node Node;
 
 struct Node {
     int weight;
     char character;
+    char *repr;
     Node *left;
     Node *right;
 };
 
-struct MinHeap {
-    Node* arr;
-    // Current Size of the Heap
-    int size;
-    // Maximum capacity of the heap
-    int capacity;
-};
 
-void fill_array(char *str)
+void fill_array(char *str, char *input)
 {
     for (int i = 0; i < strlen(str); i++) {
         input[(unsigned char)str[i]] += 1;
     }
 }
 
-int parent(int i) {
-    // Get the index of the parent
-    return (i - 1) / 2;
+
+int comparator(void *e1, void *e2)
+{
+    int w1 = ((Node *) e1)->weight, w2 = ((Node *) e2)->weight;
+    if (w1 > w2) return 1;
+    else if (w1 == w2) return 0;
+    else return -1;
 }
 
-int left_child(int i) {
-    return (2*i + 1);
+void setWeight(void *e, int weight)
+{
+    ((Node *) e)->weight = weight;
 }
 
-int right_child(int i) {
-    return (2*i + 2);
-}
-
-int get_min(MinHeap* heap) {
-    // Return the root node element,
-    // since that's the minimum
-    return heap->arr[0].weight;
-}
-
-MinHeap* init_minheap(int capacity) {
-    MinHeap* minheap = (MinHeap*) calloc (1, sizeof(MinHeap));
-    minheap->arr = (Node*) calloc (capacity, sizeof(Node));
-    minheap->capacity = capacity;
-    minheap->size = 0;
-    return minheap;
-}
-
-MinHeap* insert_minheap(MinHeap* heap, Node element) {
-    // Inserts an element to the min heap
-    // We first add it to the bottom (last level)
-    // of the tree, and keep swapping with it's parent
-    // if it is lesser than it. We keep doing that until
-    // we reach the root node. So, we will have inserted the
-    // element in it's proper position to preserve the min heap property
-    if (heap->size == heap->capacity) {
-        fprintf(stderr, "Cannot insert %d. Heap is already full!\n", element.character);
-        return heap;
-    }
-    // We can add it. Increase the size and add it to the end
-    heap->size++;
-    heap->arr[heap->size - 1] = element;
-
-    // Keep swapping until we reach the root
-    int curr = heap->size - 1;
-    // As long as you aren't in the root node, and while the 
-    // parent of the last element is greater than it
-    while (curr > 0 && heap->arr[parent(curr)].weight > heap->arr[curr].weight) {
-        // Swap
-        Node temp = heap->arr[parent(curr)];
-        heap->arr[parent(curr)] = heap->arr[curr];
-        heap->arr[curr] = temp;
-        // Update the current index of element
-        curr = parent(curr);
-    }
-    return heap; 
-}
-
-MinHeap* heapify(MinHeap* heap, int index) {
-    // Rearranges the heap as to maintain
-    // the min-heap property
-    if (heap->size <= 1)
-        return heap;
-    
-    int left = left_child(index); 
-    int right = right_child(index); 
-
-    // Variable to get the smallest element of the subtree
-    // of an element an index
-    int smallest = index; 
-    
-    // If the left child is smaller than this element, it is
-    // the smallest
-    if (left < heap->size && heap->arr[left].weight < heap->arr[index].weight) 
-        smallest = left; 
-    
-    // Similarly for the right, but we are updating the smallest element
-    // so that it will definitely give the least element of the subtree
-    if (right < heap->size && heap->arr[right].weight < heap->arr[smallest].weight) 
-        smallest = right; 
-
-    // Now if the current element is not the smallest,
-    // swap with the current element. The min heap property
-    // is now satisfied for this subtree. We now need to
-    // recursively keep doing this until we reach the root node,
-    // the point at which there will be no change!
-    if (smallest != index) 
-    { 
-        Node temp = heap->arr[index];
-        heap->arr[index] = heap->arr[smallest];
-        heap->arr[smallest] = temp;
-        heap = heapify(heap, smallest); 
-    }
-
-    return heap;
-}
-
-Node delete_minimum(MinHeap* heap) {
-    // Deletes the minimum element, at the root
-    if (!heap || heap->size == 0)
-        return (Node) {0};
-
-    int size = heap->size;
-    Node min_element = heap->arr[0];
-    Node last_element = heap->arr[size-1];
-    
-    // Update root value with the last element
-    heap->arr[0] = last_element;
-
-    // Now remove the last element, by decreasing the size
-    heap->size--;
-    size--;
-
-    // We need to call heapify(), to maintain the min-heap property
-    heapify(heap, 0);
-    
-    return min_element;
+int getWeight(void *e)
+{
+    return ((Node *) e)->weight;
 }
 
 
-Node delete_element(MinHeap* heap, int index) {
-    // Deletes an element, indexed by index
-    // Ensure that it's lesser than the current root
-    Node ret = heap->arr[index];
-    
-    heap->arr[index].weight = get_min(heap) - 1;
-    
-    // Now keep swapping, until we update the tree
-    int curr = index;
-    while (curr > 0 && heap->arr[parent(curr)].weight > heap->arr[curr].weight) {
-        Node temp = heap->arr[parent(curr)];
-        heap->arr[parent(curr)] = heap->arr[curr];
-        heap->arr[curr] = temp;
-        curr = parent(curr);
-    }
-
-    // Now simply delete the minimum element
-    delete_minimum(heap);
-    
-    return ret;
+void weight_setter(void *e, int weight)
+{
+    ((Node *) e)->weight = weight;
 }
+
 
 
 void print_heap(MinHeap* heap) {
@@ -179,17 +60,9 @@ void print_heap(MinHeap* heap) {
     // inorder traversal of the tree
     printf("Min Heap:\n");
     for (int i=0; i<heap->size; i++) {
-        printf("(%d, %c)-> ", heap->arr[i].weight, heap->arr[i].character);
+        printf("(%d, %c)-> ", ((Node *)(heap->arr[i]))->weight, ((Node *)(heap->arr[i]))->character);
     }
     printf("\n");
-}
-
-
-void free_minheap(MinHeap* heap) {
-    if (!heap)
-        return;
-    free(heap->arr);
-    free(heap);
 }
 
 Node* join(Node *node1, Node *node2)
@@ -247,10 +120,10 @@ struct Node2 {
     Node2 *right;
 };
 
-Node2 array[255];
+Node2 array[128];
 int node2Cnt = 0;
 
-void make(char *str, Node *node) {
+void assign_binary_code(char *str, Node *node) {
     if (node == NULL) return;
     
     if (node->character != (char) 255) {
@@ -270,12 +143,12 @@ void make(char *str, Node *node) {
     char *s1 = (char *) malloc(strlen(str) + 1);
     strcpy(s1, str);
     strcat(s1, "0");
-    make(s1, node->left);
+    assign_binary_code(s1, node->left);
     
     char *s2 = (char *) malloc(strlen(str) + 1);
     strcpy(s2, str);
     strcat(s2, "1");
-    make(s2, node->right);
+    assign_binary_code(s2, node->right);
     
 }
 
@@ -343,37 +216,44 @@ char find_key(char *key, Node3 *array, int len)
 
 
 int main() {
-    // Capacity of 100 elements
-    MinHeap* heap = init_minheap(100);
+    // Create minimal heap with a capacity of 100 elements
+    MinHeap* heap = init_minheap(100, comparator, setWeight, getWeight);
     
-    fill_array(str);
+    // Read input string and assign weights to input characters
+    char input[128] = {0};
+    fill_array(str, input);
     
-    for (int i = 0; i < 254; i++) {
+    // Build min heap with input characters ordered by weights
+    for (int i = 0; i < 127; i++) {
         if (!input[i]) continue;
         
         Node *node = (Node *) calloc(1, sizeof(Node));
         node->weight = input[i];
         node->character = i;
-        insert_minheap(heap, *node);
+        insert_minheap(heap, node);
     }
     
     print_heap(heap);
     
-    Node arr[100] = {};
+    // Keep popping two min elements, joining them into one and inserting into the heap
+    // until only one element is left
+    Node* arr[100] = {};
     int s = 0;
     
     while(heap->size > 1) {
         arr[s++] = delete_element(heap, 0);
         arr[s++] = delete_element(heap, 0);
-        insert_minheap(heap, *join(&arr[s - 2], &arr[s - 1]));
+        insert_minheap(heap, join(arr[s - 2], arr[s - 1]));
         print_heap(heap);
     }
 
     
-    Node node = delete_element(heap, 0);
+    Node *node = delete_element(heap, 0);
     
+    // Walk the tree and assign binary code to each leaf (i. e. input character) and
+    // produce and array of (input_character, binary_code) elements
     char *st = "";
-    make(st, &node); 
+    assign_binary_code(st, node); 
     
     printf("\n");
     for (int i = 0; i < node2Cnt; i++) {
@@ -381,6 +261,7 @@ int main() {
     }
     
     
+    // Build array of (input_character, binary_code) elements stripped off all other info
     Node3 arr2[node2Cnt];
     
     for (int i = 0; i < node2Cnt; i++) {
@@ -398,11 +279,8 @@ int main() {
     }
     
     
-    // Node3 arr[] = { {' ', "000"}, {'m', "001"}, {'d', "01"}, {'e', "10"}, {'v', "110"}, {'p', "1110"}, {'r', "1111"} };
+    // Sort resulting array using qsort
     int n = sizeof(arr2) / sizeof(arr2[0]);
-    
-    
-    // Sort the array using qsort
     qsort(arr2, n, sizeof(Node3), compare_by_char);
     
     printf("\n");
@@ -411,7 +289,7 @@ int main() {
     }
     
     
-    // Convert input string to binary code
+    // Encode string (convert input string to binary code)
     printf("\n");
     char *s3 = (char *) malloc(100);
     for (int i = 0 ; i < strlen(str); i++) {
@@ -420,22 +298,17 @@ int main() {
         strcat(s3, arr2[v].str);
     }
     
-    printf("\nBinary output:\n%s\n", s3);
-
     qsort(arr2, n, sizeof(Node3), compare_by_binary);
     
+    printf("\nBinary output:\n%s\n", s3);
+
     printf("\n");
     for (int i = 0; i < n; i++) {
         printf("(%c, %s) -> ", arr2[i].c, arr2[i].str);
     }
     
-    // decode
-    // char find_key(char *key, Node3 *array, int len)
     
-    
-    //printf("\nKey = %c\n", find_key("00", arr2, n));
-    
-    
+    // Decode string
     // 1110111110110100100000110011101001
     
     char *decoded_string = (char *) calloc(1, 100);
