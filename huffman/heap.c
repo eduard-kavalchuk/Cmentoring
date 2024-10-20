@@ -240,32 +240,13 @@ void printLevelOrder(Node *root) {
         printCurrentLevel(root, i);
 }
 
-Node array[255];
-int node2Cnt = 0;
 
 void make(char *str, Node *node) {
     if (node == NULL) return;
     
     if (node->isLeaf) {
-        /*
-        Node *node2 = (Node *) calloc(1, sizeof(Node));
-        node2->character = node->character;
-        
-        char *s = (char *) malloc(strlen(str));
-        strcpy(s, str);
-        node2->repr = s;
-        */
-        
         node->repr = (char *) malloc(strlen(str));
         strcpy(node->repr, str);
-        
-        /*
-        array[node2Cnt] = *node2;
-        ++node2Cnt;
-        */
-        /*
-        printf("\nnode2Cnt = %d, node->weight = %d, node->character = %d, node->left = %p, node->right = %p, node->repr = %s", node2Cnt, node->weight, node->character, node->left, node->right, node->repr);
-        */
     }
     
     char *s1 = (char *) malloc(strlen(str) + 1);
@@ -285,11 +266,7 @@ void flatten(Node *node, Node *array, int *node2Cnt)
     
     if (node->isLeaf) {      
         printf("\n(%c, %s)", node->character, node->repr);
-        int i = *node2Cnt;
-        array[i] = *node;
-        ++i;
-        *node2Cnt = i;
-        //++node2Cnt;
+        array[(*node2Cnt)++] = *node;
     }
     
     flatten(node->left, array, node2Cnt);
@@ -393,8 +370,8 @@ int main() {
     char *st = "";
     make(st, &node); 
     
-    //Node array[255];
-    //int node2Cnt = 0;
+    Node array[255];
+    int node2Cnt = 0;
     
     flatten(&node, array, &node2Cnt);
     printf("\n%d", node2Cnt);
@@ -404,10 +381,6 @@ int main() {
     for (int i = 0; i < node2Cnt; i++) {
         printf("(%c, %s) ", array[i].character, array[i].repr);
     }
-    
-    
-    //return 0;
-    
     
     Node3 arr2[node2Cnt];
     
