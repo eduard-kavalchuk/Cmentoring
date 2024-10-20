@@ -174,7 +174,8 @@ Node* delete_minimum(MinHeap* heap) {
 Node* delete_element(MinHeap* heap, int index) {
     // Deletes an element, indexed by index
     // Ensure that it's lesser than the current root
-    //Node* ret = heap->arr[index];
+    Node *ret = (Node *) calloc(1, sizeof(Node));
+    memcpy(ret, heap->arr[index], sizeof(Node));
     
     heap->setWeight(heap->arr[index], heap->getWeight(heap->arr[0]) - 1);
     
@@ -359,15 +360,8 @@ int main() {
     printf("Heap before folding:\n");
     print_heap(heap);
     
-    Node *arr[2];
     while(heap->size > 1) {
-        arr[0] = delete_element(heap, 0);
-        arr[1] = delete_element(heap, 0);
-        printf("\narr[0]->weight = %d, arr[1]->weight = %d", arr[0]->weight, arr[1]->weight);
-        printf("\narr[0]->character = %c, arr[1]->character = %c\n", arr[0]->character, arr[1]->character);
-        insert_minheap(heap, join(arr[0], arr[1]));
-        
-        //insert_minheap(heap, join(delete_element(heap, 0), delete_element(heap, 0)));
+        insert_minheap(heap, join(delete_element(heap, 0), delete_element(heap, 0)));
         print_heap(heap);
     }
 
