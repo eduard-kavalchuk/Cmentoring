@@ -13,6 +13,7 @@ typedef struct Node Node;
 struct Node {
     int weight;
     unsigned char character;
+    char *repr;
     int isLeaf;
     Node *left;
     Node *right;
@@ -239,28 +240,19 @@ void printLevelOrder(Node *root) {
         printCurrentLevel(root, i);
 }
 
-typedef struct Node2 Node2;
-
-struct Node2 {
-    char character;
-    char *str;
-    Node2 *left;
-    Node2 *right;
-};
-
-Node2 array[255];
+Node array[255];
 int node2Cnt = 0;
 
 void make(char *str, Node *node) {
     if (node == NULL) return;
     
     if (node->isLeaf) {
-        Node2 *node2 = (Node2 *) calloc(1, sizeof(Node2));
+        Node *node2 = (Node *) calloc(1, sizeof(Node));
         node2->character = node->character;
         
         char *s = (char *) malloc(strlen(str));
         strcpy(s, str);
-        node2->str = s;
+        node2->repr = s;
         
         
         array[node2Cnt] = *node2;
@@ -379,7 +371,7 @@ int main() {
     
     printf("\n");
     for (int i = 0; i < node2Cnt; i++) {
-        printf("(%c, %s) ", array[i].character, array[i].str);
+        printf("(%c, %s) ", array[i].character, array[i].repr);
     }
     
     
@@ -387,8 +379,8 @@ int main() {
     
     for (int i = 0; i < node2Cnt; i++) {
         Node3 *node = (Node3 *) calloc(1, sizeof(Node3));
-        char *s = (char *) malloc(strlen(array[i].str));
-        strcpy(s, array[i].str);
+        char *s = (char *) malloc(strlen(array[i].repr));
+        strcpy(s, array[i].repr);
         node->c = array[i].character;
         node->str = s;
         arr2[i] = *node;
