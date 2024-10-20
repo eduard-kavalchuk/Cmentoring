@@ -23,6 +23,7 @@ struct MinHeap {
     int size;
     // Maximum capacity of the heap
     int capacity;
+    int (*compare)(Node *e1, Node *e2);
 };
 
 void fill_array(char *str)
@@ -51,11 +52,23 @@ int get_min(MinHeap* heap) {
     return heap->arr[0].weight;
 }
 
-MinHeap* init_minheap(int capacity) {
+
+int compare(Node *e1, Node *e2)
+{
+    int w1 = ((Node *) e1)->weight, w2 = ((Node *) e2)->weight;
+    if (w1 > w2) return 1;
+    else if (w1 == w2) return 0;
+    else return -1;
+}
+
+
+MinHeap* init_minheap(int capacity, int (*compare)(Node *e1, Node *e2))
+{
     MinHeap* minheap = (MinHeap*) calloc (1, sizeof(MinHeap));
-    minheap->arr = (Node*) calloc (capacity, sizeof(Node));
+    minheap->arr = (Node *) calloc (capacity, sizeof(char *));
     minheap->capacity = capacity;
     minheap->size = 0;
+    minheap->compare = compare;
     return minheap;
 }
 
@@ -78,7 +91,7 @@ MinHeap* insert_minheap(MinHeap* heap, Node element) {
     int curr = heap->size - 1;
     // As long as you aren't in the root node, and while the 
     // parent of the last element is greater than it
-    while (curr > 0 && heap->arr[parent(curr)].weight > heap->arr[curr].weight) {
+    while (curr > 0 && heap->compare(&(heap->arr[parent(curr)]), &(heap->arr[curr])) > 0) {
         // Swap
         Node temp = heap->arr[parent(curr)];
         heap->arr[parent(curr)] = heap->arr[curr];
@@ -104,12 +117,12 @@ MinHeap* heapify(MinHeap* heap, int index) {
     
     // If the left child is smaller than this element, it is
     // the smallest
-    if (left < heap->size && heap->arr[left].weight < heap->arr[index].weight) 
+    if (left < heap->size && heap->compare(&(heap->arr[left]), &(heap->arr[index])) < 0)
         smallest = left; 
     
     // Similarly for the right, but we are updating the smallest element
     // so that it will definitely give the least element of the subtree
-    if (right < heap->size && heap->arr[right].weight < heap->arr[smallest].weight) 
+    if (right < heap->size && heap->compare(&(heap->arr[right]), &(heap->arr[smallest])) < 0) 
         smallest = right; 
 
     // Now if the current element is not the smallest,
@@ -160,7 +173,7 @@ Node delete_element(MinHeap* heap, int index) {
     
     // Now keep swapping, until we update the tree
     int curr = index;
-    while (curr > 0 && heap->arr[parent(curr)].weight > heap->arr[curr].weight) {
+    while (curr > 0 && heap->compare(&(heap->arr[parent(curr)]), &(heap->arr[curr])) > 0) {
         Node temp = heap->arr[parent(curr)];
         heap->arr[parent(curr)] = heap->arr[curr];
         heap->arr[curr] = temp;
@@ -322,7 +335,7 @@ char find_key(char *key, Node *array, int len)
 
 int main() {
     // Capacity of 100 elements
-    MinHeap* heap = init_minheap(100);
+    MinHeap* heap = init_minheap(100, compare);
     
     fill_array(str);
     
