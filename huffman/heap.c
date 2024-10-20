@@ -23,6 +23,7 @@ struct MinHeap {
     void **arr;
     int size;
     int capacity;
+    int nodeSize;
     int (*compare)(void *e1, void *e2);
     void (*setWeight)(MinHeap *heap, void *e, int weight);
     int (*getWeight)(void *e);
@@ -69,12 +70,13 @@ int compare(void *e1, void *e2)
 }
 
 
-MinHeap* init_minheap(int capacity, int (*compare)(void *e1, void *e2),
+MinHeap* init_minheap(int capacity, int nodeSize, int (*compare)(void *e1, void *e2),
                       void (*setWeight)(MinHeap *heap, void *e, int weight), int (*getWeight)(void *e))
 {
     MinHeap* minheap = (MinHeap*) calloc (1, sizeof(MinHeap));
     minheap->arr = (void **) calloc (capacity, sizeof(void *));
     minheap->capacity = capacity;
+    minheap->nodeSize = nodeSize;
     minheap->size = 0;
     minheap->compare = compare;
     minheap->setWeight = setWeight;
@@ -103,7 +105,7 @@ MinHeap* insert_minheap(MinHeap* heap, void* element) {
     // parent of the last element is greater than it
     while (curr > 0 && heap->compare(heap->arr[parent(curr)], heap->arr[curr]) > 0) {
         // Swap
-        Node *temp = heap->arr[parent(curr)];
+        void *temp = heap->arr[parent(curr)];
         heap->arr[parent(curr)] = heap->arr[curr];
         heap->arr[curr] = temp;
         // Update the current index of element
@@ -151,14 +153,14 @@ MinHeap* heapify(MinHeap* heap, int index) {
     return heap;
 }
 
-Node* delete_minimum(MinHeap* heap) {
+void* delete_minimum(MinHeap* heap) {
     // Deletes the minimum element, at the root
     if (!heap || heap->size == 0)
         return (void *) {0};
 
     int size = heap->size;
-    Node *min_element = heap->arr[0];
-    Node *last_element = heap->arr[size-1];
+    void *min_element = heap->arr[0];
+    void *last_element = heap->arr[size-1];
     
     // Update root value with the last element
     heap->arr[0] = last_element;
@@ -174,11 +176,11 @@ Node* delete_minimum(MinHeap* heap) {
 }
 
 
-Node* delete_element(MinHeap* heap, int index) {
+void* delete_element(MinHeap* heap, int index) {
     // Deletes an element, indexed by index
     // Ensure that it's lesser than the current root
-    void *ret = (void *) calloc(1, sizeof(Node));
-    memcpy(ret, heap->arr[index], sizeof(Node));
+    void *ret = (void *) calloc(1, heap->nodeSize);
+    memcpy(ret, heap->arr[index], heap->nodeSize);
     
     heap->setWeight(heap, heap->arr[index], heap->getWeight(heap->arr[0]) - 1);
     
@@ -346,7 +348,7 @@ char find_key(char *key, Node *array, int len)
 
 int main() {
     // Capacity of 100 elements
-    MinHeap* heap = init_minheap(100, compare, setWeight, getWeight);
+    MinHeap* heap = init_minheap(100, sizeof(Node), compare, setWeight, getWeight);
     
     fill_array(str);
     
