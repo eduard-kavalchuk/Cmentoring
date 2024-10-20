@@ -272,17 +272,12 @@ void flatten(Node *node, Node *array, int *node2Cnt)
 
 
 int compare_by_char(const void* a, const void* b) {
-    // If a is smaller, positive value will be returned
     return ((Node *)a)->character - ((Node *)b)->character;
 }
 
 
-int compare_by_binary(const void* a, const void* b) {
-    // If a is smaller, positive value will be returned
-    char *str1 = ((Node *)a)->repr;
-    char *str2 = ((Node *)b)->repr;
-    
-    return strcmp(str1, str2);
+int compare_by_binary(const void* a, const void* b) {   
+    return strcmp(((Node *)a)->repr, ((Node *)b)->repr);
 }
 
 
