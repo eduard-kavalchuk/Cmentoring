@@ -70,7 +70,7 @@ MinHeap* init_minheap(int capacity, int (*compare)(void *e1, void *e2),
                       void (*setWeight)(void *e, int weight), int (*getWeight)(void *e))
 {
     MinHeap* minheap = (MinHeap*) calloc (1, sizeof(MinHeap));
-    minheap->arr = (Node *) calloc (capacity, sizeof(char *));
+    minheap->arr = (Node *) calloc (capacity, sizeof(Node));
     minheap->capacity = capacity;
     minheap->size = 0;
     minheap->compare = compare;
@@ -87,7 +87,7 @@ MinHeap* insert_minheap(MinHeap* heap, Node element) {
     // we reach the root node. So, we will have inserted the
     // element in it's proper position to preserve the min heap property
     if (heap->size == heap->capacity) {
-        fprintf(stderr, "Cannot insert %d. Heap is already full!\n", element.character);
+        fprintf(stderr, "\nCannot insert. Heap is already full!\n");
         return heap;
     }
     // We can add it. Increase the size and add it to the end
