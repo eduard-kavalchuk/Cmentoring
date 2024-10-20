@@ -18,12 +18,12 @@ struct Node {
 };
 
 struct MinHeap {
-    Node* arr;
-    // Current Size of the Heap
+    Node *arr;
     int size;
-    // Maximum capacity of the heap
     int capacity;
     int (*compare)(Node *e1, Node *e2);
+    void (*setWeight)(Node *e, int weight);
+    int (*getWeight)(Node *e);
 };
 
 void fill_array(char *str)
@@ -46,10 +46,14 @@ int right_child(int i) {
     return (2*i + 2);
 }
 
-int get_min(MinHeap* heap) {
-    // Return the root node element,
-    // since that's the minimum
-    return heap->arr[0].weight;
+void setWeight(Node *e, int weight)
+{
+    ((Node *) e)->weight = weight;
+}
+
+int getWeight(Node *e)
+{
+    return ((Node *) e)->weight;
 }
 
 
@@ -62,13 +66,16 @@ int compare(Node *e1, Node *e2)
 }
 
 
-MinHeap* init_minheap(int capacity, int (*compare)(Node *e1, Node *e2))
+MinHeap* init_minheap(int capacity, int (*compare)(Node *e1, Node *e2),
+                      void (*setWeight)(Node *e, int weight), int (*getWeight)(Node *e))
 {
     MinHeap* minheap = (MinHeap*) calloc (1, sizeof(MinHeap));
     minheap->arr = (Node *) calloc (capacity, sizeof(char *));
     minheap->capacity = capacity;
     minheap->size = 0;
     minheap->compare = compare;
+    minheap->setWeight = setWeight;
+    minheap->getWeight = getWeight;
     return minheap;
 }
 
@@ -169,7 +176,7 @@ Node delete_element(MinHeap* heap, int index) {
     // Ensure that it's lesser than the current root
     Node ret = heap->arr[index];
     
-    heap->arr[index].weight = get_min(heap) - 1;
+    heap->setWeight(&(heap->arr[index]), heap->getWeight(&(heap->arr[0])) - 1);
     
     // Now keep swapping, until we update the tree
     int curr = index;
@@ -335,7 +342,7 @@ char find_key(char *key, Node *array, int len)
 
 int main() {
     // Capacity of 100 elements
-    MinHeap* heap = init_minheap(100, compare);
+    MinHeap* heap = init_minheap(100, compare, setWeight, getWeight);
     
     fill_array(str);
     
