@@ -21,9 +21,9 @@ struct MinHeap {
     Node *arr;
     int size;
     int capacity;
-    int (*compare)(Node *e1, Node *e2);
-    void (*setWeight)(Node *e, int weight);
-    int (*getWeight)(Node *e);
+    int (*compare)(void *e1, void *e2);
+    void (*setWeight)(void *e, int weight);
+    int (*getWeight)(void *e);
 };
 
 void fill_array(char *str)
@@ -46,18 +46,18 @@ int right_child(int i) {
     return (2*i + 2);
 }
 
-void setWeight(Node *e, int weight)
+void setWeight(void *e, int weight)
 {
     ((Node *) e)->weight = weight;
 }
 
-int getWeight(Node *e)
+int getWeight(void *e)
 {
     return ((Node *) e)->weight;
 }
 
 
-int compare(Node *e1, Node *e2)
+int compare(void *e1, void *e2)
 {
     int w1 = ((Node *) e1)->weight, w2 = ((Node *) e2)->weight;
     if (w1 > w2) return 1;
@@ -66,8 +66,8 @@ int compare(Node *e1, Node *e2)
 }
 
 
-MinHeap* init_minheap(int capacity, int (*compare)(Node *e1, Node *e2),
-                      void (*setWeight)(Node *e, int weight), int (*getWeight)(Node *e))
+MinHeap* init_minheap(int capacity, int (*compare)(void *e1, void *e2),
+                      void (*setWeight)(void *e, int weight), int (*getWeight)(void *e))
 {
     MinHeap* minheap = (MinHeap*) calloc (1, sizeof(MinHeap));
     minheap->arr = (Node *) calloc (capacity, sizeof(char *));
