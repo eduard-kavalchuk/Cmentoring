@@ -194,7 +194,7 @@ char find_key(char *key, Node *array, int len)
 
 int main() {
     // Capacity of 100 elements
-    MinHeap* heap = init_minheap(100, sizeof(Node), compare, setWeight, getWeight);
+    MinHeap* heap = init_minheap(100, compare, setWeight, getWeight);
     
     fill_array(str);
     
@@ -212,12 +212,21 @@ int main() {
     print_heap(heap);
     
     while(heap->size > 1) {
-        insert_minheap(heap, join(delete_element(heap, 0), delete_element(heap, 0)));
+        Node *node1 = (Node *) calloc(1, sizeof(Node));
+        memcpy(node1, peek(heap, 0), sizeof(Node));
+        delete_element(heap, 0);
+        
+        Node *node2 = (Node *) calloc(1, sizeof(Node));
+        memcpy(node2, peek(heap, 0), sizeof(Node));
+        delete_element(heap, 0);
+        
+        insert_minheap(heap, join(node1, node2));
+        
         print_heap(heap);
     }
 
     
-    Node *node = delete_element(heap, 0);
+    Node *node = (Node *) peek(heap, 0);
     
     make("", node); 
     

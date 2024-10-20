@@ -17,17 +17,17 @@ int getRightChildIdx(int i) {
     return (2 * i + 2);
 }
 
-MinHeap* init_minheap(int capacity, int nodeSize, int (*compare)(void *e1, void *e2),
+MinHeap* init_minheap(int capacity, int (*compare)(void *e1, void *e2),
                       void (*setWeight)(MinHeap *heap, void *e, int weight), int (*getWeight)(void *e))
 {
     MinHeap* minheap = (MinHeap*) calloc (1, sizeof(MinHeap));
     minheap->arr = (void **) calloc (capacity, sizeof(void *));
     minheap->capacity = capacity;
-    minheap->nodeSize = nodeSize;
     minheap->size = 0;
     minheap->compare = compare;
     minheap->setWeight = setWeight;
     minheap->getWeight = getWeight;
+    
     return minheap;
 }
 
@@ -116,12 +116,14 @@ void delete_minimum(MinHeap* heap) {
 
 }
 
+void* peek(MinHeap* heap, int index)
+{
+    return heap->arr[index];
+}
 
-void* delete_element(MinHeap* heap, int index) {
+void delete_element(MinHeap* heap, int index) {
     // Deletes an element, indexed by index
     // Ensure that it's lesser than the current root
-    void *ret = (void *) calloc(1, heap->nodeSize);
-    memcpy(ret, heap->arr[index], heap->nodeSize);
     
     heap->setWeight(heap, heap->arr[index], heap->getWeight(heap->arr[0]) - 1);
     
@@ -137,7 +139,7 @@ void* delete_element(MinHeap* heap, int index) {
     // Now simply delete the minimum element
     delete_minimum(heap);
     
-    return ret;
+    return;
 }
 
 
