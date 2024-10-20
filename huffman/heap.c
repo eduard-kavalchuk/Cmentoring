@@ -381,29 +381,6 @@ int main() {
         printf("(%c, %s) ", array[i].character, array[i].repr);
     }
     
-    /*
-    Node3 arr2[node2Cnt];
-    
-    for (int i = 0; i < node2Cnt; i++) {
-        Node3 *node = (Node3 *) calloc(1, sizeof(Node3));
-        char *s = (char *) malloc(strlen(array[i].repr));
-        strcpy(s, array[i].repr);
-        node->c = array[i].character;
-        node->str = s;
-        arr2[i] = *node;
-    }
-    
-    printf("\n");
-    for (int i = 0; i < node2Cnt; i++) {
-        printf("(%c, %s) ", arr2[i].c, arr2[i].str);
-    }
-    */
-    
-    
-    // Node3 arr[] = { {' ', "000"}, {'m', "001"}, {'d', "01"}, {'e', "10"}, {'v', "110"}, {'p', "1110"}, {'r', "1111"} };
-    //int n = sizeof(array) / sizeof(array[0]);
-    //printf("\nn = %d", sizeof(array) );
-    
     // Sort the array using qsort
     qsort(array, node2Cnt, sizeof(Node), compare_by_char);
     
@@ -413,13 +390,11 @@ int main() {
     }
     
     
-    
     // Convert input string to binary code
     printf("\n");
     char *s3 = (char *) malloc(100);
     for (int i = 0 ; i < strlen(str); i++) {
         int v = find_code(str[i], array, node2Cnt);
-        //printf("(%c, %s) ", str[i], array[v].repr);
         strcat(s3, array[v].repr);
     }
     
@@ -435,12 +410,7 @@ int main() {
     
     
     // decode
-    // char find_key(char *key, Node3 *array, int len)
-    
-    
-    //printf("\nKey = %c\n", find_key("00", arr2, n));
-    
-    
+
     // 1110111110110100100000110011101001
     
     char *decoded_string = (char *) calloc(1, 100);
