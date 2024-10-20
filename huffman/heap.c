@@ -4,8 +4,6 @@
 
 static char *str = "preved medved";
 char input[255];
-char output[255];
-int output_ptr;
 
 typedef struct MinHeap MinHeap;
 typedef struct Node Node;
@@ -225,7 +223,6 @@ void printCurrentLevel(Node *root, int level) {
         return;
     if (level == 1) {
         printf("(%d, %c) -> ", root->weight, root->character);
-        output[output_ptr++] = root->character;
     }
     else if (level > 1) {
         printCurrentLevel(root->left, level - 1);
@@ -272,14 +269,6 @@ void flatten(Node *node, Node *array, int *node2Cnt)
     flatten(node->left, array, node2Cnt);
     flatten(node->right, array, node2Cnt);
 }
-
-
-typedef struct Node3 Node3;
-
-struct Node3 {
-    char c;
-    char *str;
-};
 
 
 int compare_by_char(const void* a, const void* b) {
