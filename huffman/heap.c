@@ -212,15 +212,13 @@ int main() {
     print_heap(heap);
     
     while(heap->size > 1) {
-        Node *node1 = (Node *) calloc(1, sizeof(Node));
-        memcpy(node1, peek(heap, 0), sizeof(Node));
+        Node *nodes = (Node *) calloc(2, sizeof(Node));
+        memcpy(nodes, peek(heap, 0), sizeof(Node));
+        delete_element(heap, 0);
+        memcpy(nodes[1], peek(heap, 0), sizeof(Node));
         delete_element(heap, 0);
         
-        Node *node2 = (Node *) calloc(1, sizeof(Node));
-        memcpy(node2, peek(heap, 0), sizeof(Node));
-        delete_element(heap, 0);
-        
-        insert_minheap(heap, join(node1, node2));
+        insert_minheap(heap, join(nodes[0], nodes[1]));
         
         print_heap(heap);
     }
