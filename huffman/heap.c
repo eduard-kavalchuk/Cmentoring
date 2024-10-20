@@ -284,43 +284,43 @@ struct Node3 {
 
 int compare_by_char(const void* a, const void* b) {
     // If a is smaller, positive value will be returned
-    return ((Node3 *)a)->c - ((Node3 *)b)->c;
+    return ((Node *)a)->character - ((Node *)b)->character;
 }
 
 
 int compare_by_binary(const void* a, const void* b) {
     // If a is smaller, positive value will be returned
-    char *str1 = ((Node3 *)a)->str;
-    char *str2 = ((Node3 *)b)->str;
+    char *str1 = ((Node *)a)->repr;
+    char *str2 = ((Node *)b)->repr;
     
     return strcmp(str1, str2);
 }
 
 
-int find_code(char c, Node3 *array, int len)
+int find_code(char c, Node *array, int len)
 {
     int position = 0, left = 0, right = len - 1;
     while (left <= right) {
         int middle = left + (right - left) / 2;
-        if (array[middle].c >= c) {
+        if (array[middle].character >= c) {
             right = middle - 1;
             position = middle;
         } else {
             left = middle + 1;
         }
     }
-    if (array[position].c != c)
+    if (array[position].character != c)
         return -1;
     return position;
 }
 
 
-char find_key(char *key, Node3 *array, int len)
+char find_key(char *key, Node *array, int len)
 {
     int position = 0, left = 0, right = len - 1;
     while (left <= right) {
         int middle = left + (right - left) / 2;
-        int cmp = strcmp(array[middle].str, key);
+        int cmp = strcmp(array[middle].repr, key);
         if (cmp >= 0) {
             right = middle - 1;
             position = middle;
@@ -328,9 +328,9 @@ char find_key(char *key, Node3 *array, int len)
             left = middle + 1;
         }
     }
-    if (strcmp(array[position].str, key) != 0)
+    if (strcmp(array[position].repr, key) != 0)
         return -1;
-    return array[position].c;
+    return array[position].character;
 }
 
 
@@ -367,14 +367,13 @@ int main() {
     
     Node node = delete_element(heap, 0);
     
-    char *st = "";
-    make(st, &node); 
+    make("", &node); 
     
     Node array[255];
     int node2Cnt = 0;
     
     flatten(&node, array, &node2Cnt);
-    printf("\n%d", node2Cnt);
+    printf("\nnode2Cnt = %d", node2Cnt);
     
     
     printf("\n");
@@ -382,6 +381,7 @@ int main() {
         printf("(%c, %s) ", array[i].character, array[i].repr);
     }
     
+    /*
     Node3 arr2[node2Cnt];
     
     for (int i = 0; i < node2Cnt; i++) {
@@ -397,38 +397,42 @@ int main() {
     for (int i = 0; i < node2Cnt; i++) {
         printf("(%c, %s) ", arr2[i].c, arr2[i].str);
     }
+    */
     
     
     // Node3 arr[] = { {' ', "000"}, {'m', "001"}, {'d', "01"}, {'e', "10"}, {'v', "110"}, {'p', "1110"}, {'r', "1111"} };
-    int n = sizeof(arr2) / sizeof(arr2[0]);
-    
+    //int n = sizeof(array) / sizeof(array[0]);
+    //printf("\nn = %d", sizeof(array) );
     
     // Sort the array using qsort
-    qsort(arr2, n, sizeof(Node3), compare_by_char);
+    qsort(array, node2Cnt, sizeof(Node), compare_by_char);
     
     printf("\n");
-    for (int i = 0; i < n; i++) {
-        printf("(%c, %s) -> ", arr2[i].c, arr2[i].str);
+    for (int i = 0; i < node2Cnt; i++) {
+        printf("(%c, %s) -> ", array[i].character, array[i].repr);
     }
+    
     
     
     // Convert input string to binary code
     printf("\n");
     char *s3 = (char *) malloc(100);
     for (int i = 0 ; i < strlen(str); i++) {
-        int v = find_code(str[i], arr2, node2Cnt);
-        printf("(%c, %s) ", str[i], arr2[v].str);
-        strcat(s3, arr2[v].str);
+        int v = find_code(str[i], array, node2Cnt);
+        //printf("(%c, %s) ", str[i], array[v].repr);
+        strcat(s3, array[v].repr);
     }
     
     printf("\nBinary output:\n%s\n", s3);
-
-    qsort(arr2, n, sizeof(Node3), compare_by_binary);
+    
+    
+    qsort(array, node2Cnt, sizeof(Node), compare_by_binary);
     
     printf("\n");
-    for (int i = 0; i < n; i++) {
-        printf("(%c, %s) -> ", arr2[i].c, arr2[i].str);
+    for (int i = 0; i < node2Cnt; i++) {
+        printf("(%c, %s) -> ", array[i].character, array[i].repr);
     }
+    
     
     // decode
     // char find_key(char *key, Node3 *array, int len)
@@ -447,7 +451,7 @@ int main() {
     
     while(end <= strlen(s3)) {
         strncpy(tmp, s3 + start, end - start);
-        if ((c = find_key(tmp, arr2, n)) != -1) {
+        if ((c = find_key(tmp, array, node2Cnt)) != -1) {
             decoded_string[total_decoded++] = c;
             start = end;
             memset(tmp, '\0', strlen(tmp));
