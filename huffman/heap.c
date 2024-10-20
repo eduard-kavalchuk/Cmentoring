@@ -1,4 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "api.h"
+
 
 static char *str = "preved medved";
 char input[255];

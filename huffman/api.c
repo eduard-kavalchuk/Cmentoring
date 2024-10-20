@@ -1,16 +1,20 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "api.h"
 
+
 int getParentIdx(int i) {
-    // Get the index of the getParentIdx
     return (i - 1) / 2;
 }
 
 int getLeftChildIdx(int i) {
-    return (2*i + 1);
+    return (2 * i + 1);
 }
 
 int getRightChildIdx(int i) {
-    return (2*i + 2);
+    return (2 * i + 2);
 }
 
 MinHeap* init_minheap(int capacity, int nodeSize, int (*compare)(void *e1, void *e2),
@@ -96,26 +100,20 @@ MinHeap* heapify(MinHeap* heap, int index) {
     return heap;
 }
 
-void* delete_minimum(MinHeap* heap) {
+void delete_minimum(MinHeap* heap) {
     // Deletes the minimum element, at the root
     if (!heap || heap->size == 0)
-        return (void *) {0};
-
-    int size = heap->size;
-    void *min_element = heap->arr[0];
-    void *last_element = heap->arr[size-1];
+        return;
     
     // Update root value with the last element
-    heap->arr[0] = last_element;
+    heap->arr[0] = heap->arr[heap->size - 1];;
 
     // Now remove the last element, by decreasing the size
     heap->size--;
-    size--;
 
     // We need to call heapify(), to maintain the min-heap property
     heapify(heap, 0);
-    
-    return min_element;
+
 }
 
 
