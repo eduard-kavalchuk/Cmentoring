@@ -8,7 +8,7 @@
 static char *str = "preved medved";
 char input[255];
 
-MinHeap* heapify(MinHeap* heap, int index);
+//MinHeap* heapify(MinHeap* heap, int index);
 
 struct Node {
     int weight;
