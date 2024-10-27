@@ -18,9 +18,11 @@ struct Node {
 };
 
 static char *inputStr = "preved medved";
-char inputArray[255];
-Node* heap[255];
+char inputArray[2 * NUM_CHARS - 1];
+Node* heap[2 * NUM_CHARS - 1];
 int size = 0;
+Node* garbage[NUM_CHARS - 1];
+int garbageTracker;
 
 
 int getParentIdx(int i) {
@@ -75,7 +77,6 @@ void printNode(Node *node)
 }
 
 
-
 void insertNode(Node* element) {
     int curr = size;
     
@@ -89,45 +90,25 @@ void insertNode(Node* element) {
 }
 
 void heapify(int index) {
-    // Rearranges the heap as to maintain
-    // the min-heap property
     if (size <= 1)
         return;
     
     int left = getLeftChildIdx(index); 
     int right = getRightChildIdx(index); 
     
-
-    // Variable to get the smallest element of the subtree
-    // of an element an index
     int smallest = index; 
     
-    // If the left child is smaller than this element, it is
-    // the smallest
     if (left < size && heap[left]->weight < heap[index]->weight )
         smallest = left; 
     
-    // Similarly for the right, but we are updating the smallest element
-    // so that it will definitely give the least element of the subtree
     if (right < size && heap[right]->weight  < heap[smallest]->weight ) 
         smallest = right; 
 
-    // Now if the current element is not the smallest,
-    // swap with the current element. The min heap property
-    // is now satisfied for this subtree. We now need to
-    // recursively keep doing this until we reach the root node,
-    // the point at which there will be no change!
     if (smallest != index) 
     { 
-        //printf("Before swap:\n");
-        //printLevelOrder(heap);
-        //printf("index = %d, left = %d, right = %d, smallest = %d\n", index, left, right, smallest);
         Node *temp = heap[index];
         heap[index] = heap[smallest];
         heap[smallest] = temp;
-        //printf("After swap:\n");
-        //printLevelOrder(heap);
-        //printf("================================\n");
         heapify(smallest); 
     }
 
@@ -174,16 +155,13 @@ void mapSymbolsToCodes()
 
 Node* createInternalNode(Node *node1, Node *node2)
 {
-    //Node *node1, *node2;
-    //node1 = pop();
-    //node2 = pop();
     Node *node = (Node *) calloc(1, sizeof(Node));
     node->weight = node1->weight + node2->weight;
     node->character = NUM_CHARS + 1;
     node->nextLevelNodes[0] = node1;
     node->nextLevelNodes[1] = node2;
     node->nodeType = INTERNAL;
-    
+
     return node;
 }
 
@@ -195,6 +173,9 @@ void do_create_dict(Node *node)
     if (LEAF == node->nodeType) {      
         printf("\n(%c, %s)", node->character, node->repr);
         heap[size++] = node;
+    }
+    else {
+        garbage[garbageTracker++] = node;
     }
     
     do_create_dict(node->nextLevelNodes[0]);
@@ -239,12 +220,12 @@ char* encodeChar(char c)
         return heap[position]->repr;
 }
 
-char find_key(char *key)
+char findCharByEncoding(char *binaryCode)
 {
     int position = 0, left = 0, right = size - 1;
     while (left <= right) {
         int middle = left + (right - left) / 2;
-        int cmp = strcmp(heap[middle]->repr, key);
+        int cmp = strcmp(heap[middle]->repr, binaryCode);
         if (cmp >= 0) {
             right = middle - 1;
             position = middle;
@@ -253,7 +234,7 @@ char find_key(char *key)
         }
     }
     
-    if (strcmp(heap[position]->repr, key) != 0)
+    if (strcmp(heap[position]->repr, binaryCode) != 0)
         return -1;
     else
         return heap[position]->character;
@@ -314,7 +295,7 @@ char* decode(char *encodedStr)
     
     while(end <= strlen(encodedStr)) {
         strncpy(tmp, encodedStr + start, end - start);
-        if ((c = find_key(tmp)) != -1) {
+        if ((c = findCharByEncoding(tmp)) != -1) {
             decoded_string[total_decoded++] = c;
             start = end;
             memset(tmp, '\0', strlen(tmp));
@@ -323,6 +304,17 @@ char* decode(char *encodedStr)
     }
     
     return decoded_string;
+}
+
+void cleanup()
+{
+    for(int i = 0; i < garbageTracker; i++) {
+        free(garbage[i]);
+    }
+    for(int i = 0; i < size; i++) {
+        free(heap[i]->repr);
+        free(heap[i]);
+    }
 }
 
 
@@ -351,6 +343,7 @@ int main()
     decoded_string = decode(encodedStr);
     printf("\nDecoded string = %s\n", decoded_string);
     
+    cleanup();
 
     return 0;
 }
