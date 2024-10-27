@@ -3,16 +3,19 @@
 #include <string.h>
 #include <math.h>
 
+#define LEAF 0
+#define INTERNAL 1
+#define NUM_CHARS 127
+
 typedef struct Node Node;
 
 struct Node {
     int weight;
     int character;
     char *repr;
-    int isLeaf;
+    int nodeType;
     Node *nextLevelNodes[2];
 };
-
 
 static char *inputStr = "preved medved";
 char inputArray[255];
@@ -43,7 +46,7 @@ void printCurrentLevel(Node **root, int idx, int level) {
     if (level == 1) {
         if (root[idx]->character == ' ')
             printf("('', %d)  ", root[idx]->weight);
-        else if(root[idx]->character > 127)
+        else if(root[idx]->character > NUM_CHARS)
             printf("(%d, %d)  ", root[idx]->character, root[idx]->weight);
         else
             printf("(%c, %d)  ", root[idx]->character, root[idx]->weight);
@@ -65,7 +68,7 @@ void printLevelOrder(Node **root) {
 
 void printNode(Node *node)
 {
-    if (node->character < 127)
+    if (node->character < NUM_CHARS)
         printf("(%c, %d) ", node->character, node->weight);
     else
         printf("(%d, %d) ", node->character, node->weight);
@@ -73,19 +76,16 @@ void printNode(Node *node)
 
 
 
-void insert(Node** heap, Node* element) {
+void insertNode(Node* element) {
+    int curr = size;
+    
     heap[size++] = element;
-
-    int curr = size - 1;
-
-    while (curr > 0 &&  heap[getParentIdx(curr)]->weight > heap[curr]->weight) {
+    while (curr > 0 && heap[getParentIdx(curr)]->weight > heap[curr]->weight) {
         Node *temp = heap[getParentIdx(curr)];
         heap[getParentIdx(curr)] = heap[curr];
         heap[curr] = temp;
         curr = getParentIdx(curr);
     }
-    
-    return; 
 }
 
 void heapify(int index) {
@@ -138,17 +138,18 @@ void heapify(int index) {
 Node* pop()
 {
     Node *ret = heap[0];
+    
     heap[0] = heap[size - 1];
     size--;
     heapify(0);
+    
     return ret;
 }
 
-
-void repr(char *str, Node *node) {
+void do_map(char *str, Node *node) {
     if (node == NULL) return;
     
-    if (node->isLeaf) {
+    if (LEAF == node->nodeType) {
         node->repr = (char *) malloc(strlen(str));
         strcpy(node->repr, str);
     }
@@ -156,44 +157,70 @@ void repr(char *str, Node *node) {
     char *s1 = (char *) malloc(strlen(str) + 1);
     strcpy(s1, str);
     strcat(s1, "0");
-    repr(s1, node->nextLevelNodes[0]);
+    do_map(s1, node->nextLevelNodes[0]);
     
     char *s2 = (char *) malloc(strlen(str) + 1);
     strcpy(s2, str);
     strcat(s2, "1");
-    repr(s2, node->nextLevelNodes[1]);
-    
+    do_map(s2, node->nextLevelNodes[1]); 
 }
 
 
-void join()
+void mapSymbolsToCodes()
 {
-    Node *node1, *node2;
-    node1 = pop();
-    node2 = pop();
+    do_map("", heap[0]);
+}
+
+
+Node* createInternalNode(Node *node1, Node *node2)
+{
+    //Node *node1, *node2;
+    //node1 = pop();
+    //node2 = pop();
     Node *node = (Node *) calloc(1, sizeof(Node));
     node->weight = node1->weight + node2->weight;
-    node->character = 128;
+    node->character = NUM_CHARS + 1;
     node->nextLevelNodes[0] = node1;
     node->nextLevelNodes[1] = node2;
-    node->isLeaf = 0;
-    insert(heap, node);
+    node->nodeType = INTERNAL;
+    
+    return node;
 }
 
-void flatten(Node *node)
+
+void do_create_dict(Node *node)
 {
     if (node == NULL) return;
     
-    if (node->isLeaf) {      
+    if (LEAF == node->nodeType) {      
         printf("\n(%c, %s)", node->character, node->repr);
         heap[size++] = node;
     }
     
-    flatten(node->nextLevelNodes[0]);
-    flatten(node->nextLevelNodes[1]);
+    do_create_dict(node->nextLevelNodes[0]);
+    do_create_dict(node->nextLevelNodes[1]);
 }
 
-int find_code(char c)
+int compare_by_char(const void* a, const void* b) {
+    Node *one = *(Node **)a;
+    Node *two = *(Node **)b;
+    return ((Node *)one)->character - ((Node *)two)->character;
+}
+
+int compare_by_binary(const void* a, const void* b) {   
+    Node *one = *(Node **)a;
+    Node *two = *(Node **)b;
+    return strcmp(((Node *)one)->repr, ((Node *)two)->repr);
+}
+
+void createHuffmanDict()
+{
+    do_create_dict(pop());
+    qsort(heap, size, sizeof(Node*), compare_by_char);
+}
+
+
+char* encodeChar(char c)
 {
     int position = 0, left = 0, right = size - 1;
     while (left <= right) {
@@ -207,20 +234,9 @@ int find_code(char c)
     }
     
     if (heap[position]->character != c)
-        return -1;
-    return position;
-}
-
-int compare_by_char(const void* a, const void* b) {
-    Node *one = *(Node **)a;
-    Node *two = *(Node **)b;
-    return ((Node *)one)->character - ((Node *)two)->character;
-}
-
-int compare_by_binary(const void* a, const void* b) {   
-    Node *one = *(Node **)a;
-    Node *two = *(Node **)b;
-    return strcmp(((Node *)one)->repr, ((Node *)two)->repr);
+        return NULL;
+    else
+        return heap[position]->repr;
 }
 
 char find_key(char *key)
@@ -236,66 +252,58 @@ char find_key(char *key)
             left = middle + 1;
         }
     }
+    
     if (strcmp(heap[position]->repr, key) != 0)
         return -1;
-    return heap[position]->character;
+    else
+        return heap[position]->character;
 }
 
-int main()
+void stringToHeap(char *inputStr)
 {
     for (int i = 0; i < strlen(inputStr); i++) {
         inputArray[(int) inputStr[i]] += 1;
     }
     
-    for (int i = 0; i < 254; i++) {
+    for (int i = 0; i < NUM_CHARS + 1; i++) {
         if (!inputArray[i]) continue;
         
         Node *node = (Node *) calloc(1, sizeof(Node));
         node->weight = inputArray[i];
         node->character = i;
-        node->isLeaf = 1;
-        insert(heap, node);
+        node->nodeType = LEAF;
+        insertNode(node);
     }
-    
-    printf("Initial heap:\n");
-    printLevelOrder(heap);
-    
+}
+
+void createHuffmanTreeFromHeap()
+{
     while(size != 1) {
-        join();
+        Node* node = createInternalNode(pop(), pop());
+        insertNode(node);
         printf("===================================\n");
         printLevelOrder(heap);
     }
-    
-    repr("", heap[0]);
-    
-    flatten(pop());
-    
-    printf("\n");
-    for (int i = 0; i < size; i++) {
-        printf("(%c, %s) ", heap[i]->character, heap[i]->repr);
-    }
-    
-    qsort(heap, size, sizeof(Node*), compare_by_char);
-    
-    printf("\n");
-    for (int i = 0; i < size; i++) {
-        printf("(%c, %s) ", heap[i]->character, heap[i]->repr);
-    }
-    
-    
-    
-    // Convert input string to binary code
-    printf("\n");
-    char *s3 = (char *) malloc(300);
+}
+
+char* encode(char* inputStr)
+{
+    char *encodedStr = (char *) malloc(8 * strlen(inputStr));
     for (int i = 0 ; i < strlen(inputStr); i++) {
-        int v = find_code(inputStr[i]);
-        //printf("(%c, %d) ", inputStr[i], v);
-        strcat(s3, heap[v]->repr);
+        strcat(encodedStr, encodeChar(inputStr[i]));
     }
     
-    printf("\nBinary output:\n%s\n", s3);
-    
-    
+    return encodedStr;
+}
+
+
+char* decode(char *encodedStr)
+{
+    char *decoded_string = (char *) calloc(1, 100);
+    char *tmp = (char *) calloc(1, 100);
+    int total_decoded = 0;
+    int start = 0, end = 1;
+    char c;
     
     qsort(heap, size, sizeof(Node*), compare_by_binary);
     
@@ -304,30 +312,45 @@ int main()
         printf("(%c, %s) -> ", heap[i]->character, heap[i]->repr);
     }
     
-    
-    
-    
-    char *decoded_string = (char *) calloc(1, 100);
-    char *tmp = (char *) calloc(1, 100);
-    int total_decoded = 0;
-    int start = 0, end = 1;
-    char c;
-    
-    while(end <= strlen(s3)) {
-        strncpy(tmp, s3 + start, end - start);
+    while(end <= strlen(encodedStr)) {
+        strncpy(tmp, encodedStr + start, end - start);
         if ((c = find_key(tmp)) != -1) {
             decoded_string[total_decoded++] = c;
             start = end;
             memset(tmp, '\0', strlen(tmp));
         }
         ++end;
-        
     }
     
+    return decoded_string;
+}
+
+
+int main()
+{
+    stringToHeap(inputStr);
+    
+    printf("Initial heap:\n");
+    printLevelOrder(heap);
+
+    createHuffmanTreeFromHeap();
+    mapSymbolsToCodes();
+    
+    createHuffmanDict();
+    
+    printf("\n");
+    for (int i = 0; i < size; i++) {
+        printf("(%c, %s) ", heap[i]->character, heap[i]->repr);
+    }
+    
+    char *encodedStr = encode(inputStr);
+    
+    printf("\nBinary output:\n%s\n", encodedStr);
+    
+    char* decoded_string;
+    decoded_string = decode(encodedStr);
     printf("\nDecoded string = %s\n", decoded_string);
     
-    
-    
-    
+
     return 0;
 }
