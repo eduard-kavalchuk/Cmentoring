@@ -2,10 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdint.h>
+#include <math.h>
 
 #define LEAF 0
 #define INTERNAL 1
 #define NUM_CHARS 127
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
 
 typedef struct Node Node;
 
@@ -71,9 +75,9 @@ void printLevelOrder(Node **root) {
 void printNode(Node *node)
 {
     if (node->character < NUM_CHARS)
-        printf("(%c, %d) ", node->character, node->weight);
+        printf("(%c, %s) ", node->character, node->repr);
     else
-        printf("(%d, %d) ", node->character, node->weight);
+        printf("(%d, %s) ", node->character, node->repr);
 }
 
 
@@ -111,8 +115,6 @@ void heapify(int index) {
         heap[smallest] = temp;
         heapify(smallest); 
     }
-
-    return;
 }
 
 
@@ -269,6 +271,20 @@ void createHuffmanTreeFromHeap()
 
 char* encode(char* inputStr)
 {
+    stringToHeap(inputStr);
+    
+    printf("Initial heap:\n");
+    printLevelOrder(heap);
+
+    createHuffmanTreeFromHeap();
+    mapSymbolsToCodes();
+    createHuffmanDict();
+    
+    printf("\n");
+    for (int i = 0; i < size; i++) {
+        printf("(%c, %s) ", heap[i]->character, heap[i]->repr);
+    }
+    
     char *encodedStr = (char *) malloc(8 * strlen(inputStr));
     for (int i = 0 ; i < strlen(inputStr); i++) {
         strcat(encodedStr, encodeChar(inputStr[i]));
@@ -280,7 +296,7 @@ char* encode(char* inputStr)
 
 char* decode(char *encodedStr)
 {
-    char *decoded_string = (char *) calloc(1, 100);
+    char *decodedString = (char *) calloc(1, 100);
     char *tmp = (char *) calloc(1, 100);
     int total_decoded = 0;
     int start = 0, end = 1;
@@ -296,14 +312,14 @@ char* decode(char *encodedStr)
     while(end <= strlen(encodedStr)) {
         strncpy(tmp, encodedStr + start, end - start);
         if ((c = findCharByEncoding(tmp)) != -1) {
-            decoded_string[total_decoded++] = c;
+            decodedString[total_decoded++] = c;
             start = end;
             memset(tmp, '\0', strlen(tmp));
         }
         ++end;
     }
     
-    return decoded_string;
+    return decodedString;
 }
 
 void cleanup()
@@ -317,33 +333,176 @@ void cleanup()
     }
 }
 
+unsigned char* encodeBinary(char *str)
+{    
+    unsigned char *buffer = (unsigned char *) calloc(1, strlen(str) / 8 + MIN(1, strlen(str) % 8));
+    int shift = 7, bufferCursor = 0;
+    
+    for(int strCursor = 0; strCursor < strlen(str); strCursor++) {
+        if(str[strCursor] == '1') {
+            buffer[bufferCursor] |= (1 << shift);
+        }
+        if(--shift < 0) {
+            shift = 7;
+            bufferCursor++;
+        }
+    }
+    
+    return buffer;
+}
+
+
+uint16_t* encodeRepr(char *str)
+{    
+    uint16_t *buffer = (uint16_t *) calloc(1, sizeof(uint16_t));
+    int shift = strlen(str) - 1, bufferCursor = 0;
+    
+    for(int strCursor = 0; strCursor < strlen(str); strCursor++) {
+        if(str[strCursor] == '1') {
+            buffer[bufferCursor] |= (1 << shift);
+        }
+        --shift;
+    }
+    
+    return buffer;
+}
+
+
+//#define BIT(byte, k) (((byte) >> (k)) & 1)
+#define GET_BIT(byte, k) (((((byte) >> (k)) & 1)) == 1 ? '1' : '0')
+#define LENGTH_IN_BYTES(bitBuffer) (strlen(bitBuffer) / 8 + MIN(1, strlen(bitBuffer) % 8))
+
+char* binToString(int encoded, int size) {
+    printf("encoded = %d, size = %d\n", encoded, size);
+    char *binToStr = (char *) calloc(1, size + 1); // sizeof(encodedStr) is a bit length of binary buffer
+    for(int i = 0; i < size; i++) {
+        binToStr[size - i - 1] = GET_BIT(encoded, i);
+    }
+    return binToStr;
+}
+
 
 int main()
 {
-    stringToHeap(inputStr);
-    
-    printf("Initial heap:\n");
-    printLevelOrder(heap);
-
-    createHuffmanTreeFromHeap();
-    mapSymbolsToCodes();
-    
-    createHuffmanDict();
-    
-    printf("\n");
-    for (int i = 0; i < size; i++) {
-        printf("(%c, %s) ", heap[i]->character, heap[i]->repr);
-    }
-    
     char *encodedStr = encode(inputStr);
     
     printf("\nBinary output:\n%s\n", encodedStr);
     
-    char* decoded_string;
-    decoded_string = decode(encodedStr);
-    printf("\nDecoded string = %s\n", decoded_string);
+    for(int i = 0; i < size; i++) {
+        printNode(heap[i]);
+    }
+    
+    /*
+    char* decodedString;
+    decodedString = decode(encodedStr);
+    printf("\nDecoded string = %s\n", decodedString);
+    */
+    
+    
+    // 00010000 01001011 01111100 11000101 10
+    unsigned char *content = encodeBinary(encodedStr);
+    for(int i = 0; i < LENGTH_IN_BYTES(encodedStr); i++) {
+        printf("\nByte[%d] = %d", i, content[i]);
+    }
+    
+    // Decode content
+    char *binToStr = (char *) calloc(1, sizeof(encodedStr) + 1); // sizeof(encodedStr) is a bit length of binary buffer
+    for(int i = 0; i < strlen(encodedStr); i++) {
+        binToStr[i] = GET_BIT(content[i / 8], 7 - i % 8);
+    }
+    
+    printf("\nbinToStr:\n%s\n", binToStr);
+    
+    // Block containing content's length
+    int lenBlock = (int)strlen(encodedStr);
+    unsigned int* b = (unsigned int*) calloc(1, sizeof(int));
+    memcpy(b, &lenBlock, sizeof(int));
+
+    // Block containing header
+    struct pack {
+        uint16_t size : 4;
+        uint16_t content : 12;
+    };
+    
+    struct pack* header = (struct pack *) calloc(127, sizeof(struct pack));
+    for(int i = 0; i < size; i++) {
+        struct pack sp;
+        char *repr = heap[i]->repr;
+        uint16_t *binRepr = (uint16_t *) encodeRepr(repr);
+        sp.size = strlen(repr);
+        sp.content = *binRepr;
+        header[heap[i]->character] = sp;
+    }
+    
+    int size1 = sizeof(int), size2 = 127 * sizeof(struct pack), size3 = LENGTH_IN_BYTES(encodedStr);
+    unsigned char* outputBinary = (unsigned char*) calloc(1, size1 + size2 + size3);
+    memcpy(outputBinary, b, size1);    
+    memcpy(outputBinary + size1, header, size2);
+    memcpy(outputBinary + size1 + size2, encodedStr, size3);
+    
+    int outputLength;
+    memcpy(&outputLength, outputBinary, size1);
+    printf("length = %d\n", *outputBinary);
     
     cleanup();
+    
+    size = 0;
+    for(int i = 0; i < 127; i++) {
+        struct pack sp;
+        memcpy(&sp, outputBinary + size1 + i * sizeof(struct pack), sizeof(struct pack));
+        if(sp.size) {
+            Node *node = (Node *) calloc(1, sizeof(Node));
+            node->character = (unsigned char) i;
+            
+            
+            int content = sp.content;
+            content &= (int) pow(2, sp.size) - 1;
+            //node->repr = binToString(content, sp.size);
+            node->weight = content;
+            //printf("sp.size = %d, 2 ^ sp.size = %d\n", sp.size, (int) pow(2, sp.size));
+            
+            
+            node->repr = binToString(content, sp.size);
+            
+            /*
+                TODO:
+                1. Наложить на sp.content маску размером sp.size
+                2. Результат преобразовать в строку с нулями и единицами
+            */
+            insertNode(node);
+        }
+    }
+    
+    for(int i = 0; i < size ; i++) {
+        printf("character = %c, weight = %d, repr = %s\n", heap[i]->character, heap[i]->weight, heap[i]->repr);
+    }
+    
+    
+    
+    
+    /*
+    for(int i = 0; i < 127; i++) {
+        printf("size = %d, repr = %d\n", header[i].size, header[i].content);
+    }
+    */
+    
+    
+    
+
+    
+    /*
+    struct Node {
+        int weight;
+        int character;
+        char *repr;
+        int nodeType;
+        Node *nextLevelNodes[2];
+    };
+    
+    */
+    
+    
+    //cleanup();
 
     return 0;
 }
