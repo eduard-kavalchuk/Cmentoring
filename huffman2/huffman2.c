@@ -36,7 +36,8 @@ void _binarize(uint16_t bin, uint8_t binSize, Node *node);
 void flatten(Node *node);
 unsigned char* serialize(char *string, int strSize, int *bufSize);
 Node* getNodeByChar(char c);
-
+int getNextBit(unsigned char *binary, int binSize);
+int findChar(uint8_t value, uint8_t len);
 
 static char *inputStr = "preved medved";
 Node* heap[2 * NUM_CHARS - 1];
@@ -81,8 +82,112 @@ int main(void)
     }
     
     
+    printf("\nEncoding phase....\n");
+    
+    // Encode
+    typedef struct encodingHeaderItem encodingHeaderItem;
+    
+    struct encodingHeaderItem {
+        uint16_t bin : 12;
+        uint16_t binSize : 4;
+    };
+    
+    encodingHeaderItem* encodingHeader = (encodingHeaderItem *) calloc(NUM_CHARS, sizeof(encodingHeaderItem));
+    
+    for(int i = 0; i < size; i++) {
+        encodingHeaderItem item;
+        item.bin = heap[i]->bin;
+        item.binSize = heap[i]->binSize;
+        encodingHeader[heap[i]->character] = item;
+    }
+    
+    int sizeOfLengthHeader = sizeof(int);
+    int sizeOfEncodingHeader = NUM_CHARS * sizeof(encodingHeaderItem);
+    int sizeOfContentInBytes = BYTESIZE(sizeInBits);
+    
+    unsigned char* outputBinary = (unsigned char*) calloc(1, sizeOfLengthHeader + sizeOfEncodingHeader + sizeOfContentInBytes);
+    
+    memcpy(outputBinary, &sizeInBits, sizeOfLengthHeader);    
+    memcpy(outputBinary + sizeOfLengthHeader, encodingHeader, sizeOfEncodingHeader);
+    memcpy(outputBinary + sizeOfLengthHeader + sizeOfEncodingHeader, compressedString, sizeOfContentInBytes);
+    
+    
+    
+    
+    printf("\nDecoding phase....\n");
+    
+    // Decode
+    size = 0;
+    
+    // Step 1. Decode length of content
+    int outputLength;
+    memcpy(&outputLength, outputBinary, sizeOfLengthHeader);
+    printf("Length of compressed content in bits = %d\n", outputLength);
+    
+    // Step 2. Decode Huffman encoding
+    size = 0;
+    for(int i = 0; i < NUM_CHARS; i++) {
+        encodingHeaderItem item;
+        memcpy(&item, outputBinary + sizeOfLengthHeader + i * sizeof(encodingHeaderItem), sizeof(encodingHeaderItem));
+        if(0 != item.binSize) {
+            Node *node = (Node *) calloc(1, sizeof(Node));
+            node->character = (unsigned char) i;
+            node->bin = item.bin;
+            node->binSize = item.binSize;
+            heap[size++] = node;
+        }
+    }
+    
+    for(int i = 0; i < size ; i++) {
+        printf("(%c, %d, %d)\n", heap[i]->character, heap[i]->bin, heap[i]->binSize);
+    }
+    
+    // Step 3. Decode original string
+    uint8_t *binary = (uint8_t *) calloc(1, BYTESIZE(outputLength));
+    memcpy(binary, outputBinary + sizeOfLengthHeader + NUM_CHARS * sizeof(encodingHeaderItem), BYTESIZE(outputLength));
+    
+    
+    uint8_t value = 0, len = 0;
+    for(int i = 0; i < outputLength; i++) {
+        uint8_t bit = getNextBit(binary, outputLength);
+        value = (value << 1) + bit;
+        ++len;
+        int c = findChar(value, len);
+        if (c != -1) {
+            printf("%c", c);
+            value = 0;
+            len = 0;
+        }
+    }
+
     
     return 0;
+}
+
+
+int findChar(uint8_t value, uint8_t len)
+{
+    for(int i = 0; i < size ; i++) {
+        if((heap[i]->bin == value) && (heap[i]->binSize == len))
+            return heap[i]->character;
+    }
+    
+    return -1;
+}
+
+
+int getNextBit(unsigned char *binary, int bitSize)
+{
+    static unsigned char cursor = 0;
+    
+    for(; cursor < bitSize; cursor++) {
+        uint8_t byte = binary[cursor / 8];
+        int bit = GET_BIT(byte, 7 - cursor % 8);
+        //printf("byte = %d, bit = %d, cursor = %d\n", byte, bit, cursor);
+        ++cursor;
+        return bit;
+    }
+    return -1;
 }
 
 
