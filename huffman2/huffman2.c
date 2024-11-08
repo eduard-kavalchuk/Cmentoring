@@ -8,7 +8,7 @@
 #define NUM_CHARS 127
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define GET_BIT(value, pos) ((((value) >> (pos)) & 1) == 1 ? 1 : 0)
-#define BYTESIZE(sizeInBits) ((sizeInBits) / 8 + MIN((sizeInBits) % 8, 1))
+#define BYTESIZE(sizeOfContentInBits) ((sizeOfContentInBits) / 8 + MIN((sizeOfContentInBits) % 8, 1))
 #define BIT_COUNT(value) (value != 0 ? (int)log2(value) + 1 : 0)
 
 typedef struct Node Node;
@@ -19,6 +19,13 @@ struct Node {
     uint16_t bin;
     uint8_t binSize;
     Node *childNodes[2];
+};
+
+typedef struct encodingHeaderItem encodingHeaderItem;
+    
+struct encodingHeaderItem {
+    uint16_t bin : 12;
+    uint16_t binSize : 4;
 };
 
 
@@ -34,118 +41,92 @@ void printLevelOrder(Node **root);
 void binarize(void);
 void _binarize(uint16_t bin, uint8_t binSize, Node *node);
 void flatten(Node *node);
-unsigned char* serialize(char *string, int strSize, int *bufSize);
-Node* getNodeByChar(char c);
+int serialize(char *inputString, int strSize, void *encodingTable, unsigned char **compressedContent);
+int getCharRepr(char c, void *encodingTable, uint16_t *repr, uint8_t *reprSize);
 int getNextBit(unsigned char *binary, int binSize);
 int findChar(uint8_t value, uint8_t len);
 
 static char *inputStr = "preved medved";
 Node* heap[2 * NUM_CHARS - 1];
 int size;
+void registerChar(char ch, int weight);
+void* buildEncodingTable(void);
+int buildEncodingHeader(encodingHeaderItem **encodingHeader, void *encodingTable);
+void buildOutputBinary(unsigned char** outputBinary, unsigned char* compressedContent, int sizeOfContentInBits, encodingHeaderItem* encodingHeader, int sizeOfEncodingHeader, int sizeOfLengthHeader);
+int decodeLength(unsigned char* outputBinary);
+void* decodeEncoding(unsigned char* outputBinary);
+void decodeInputString(unsigned char* outputBinary, int outputLength);
+
 
 int main(void)
 {
-    char inputArray[NUM_CHARS] = {0};
+    char charFrequencies[NUM_CHARS] = {0};
     
     for (int i = 0; i < strlen(inputStr); i++) {
-        inputArray[(int) inputStr[i]] += 1;
+        charFrequencies[(int) inputStr[i]] += 1;
     }
     
-    for (int i = 0; i < NUM_CHARS + 1; i++) {
-        if (0 == inputArray[i]) continue;
-        
-        Node *node = (Node *) calloc(1, sizeof(Node));
-        node->weight = inputArray[i];
-        node->character = i;
-        insertNode(node);
-    }
+    for (int ch = 0; ch < NUM_CHARS + 1; ch++) {
+        if (0 == charFrequencies[ch]) continue;
 
-    printLevelOrder(heap);
-    
-    while(size != 1) {
-        Node* node = createInternalNode(pop(), pop());
-        insertNode(node);
-        //printf("===================================\n");
-        //printLevelOrder(heap);
+        registerChar(ch, charFrequencies[ch]);
     }
     
-    binarize();
-    flatten(pop());
+    void *encodingTable = buildEncodingTable();
+
+    unsigned char* compressedContent;
+    int sizeOfContentInBits = serialize(inputStr, strlen(inputStr), encodingTable, &compressedContent);
     
-    unsigned char* compressedString;
-    int sizeInBits;
-    compressedString = serialize(inputStr, strlen(inputStr), &sizeInBits);
-    
-    printf("sizeInBits = %d\n", sizeInBits);
-    for(int i = 0; i < BYTESIZE(sizeInBits); i++) {
-        printf("compressedString[%d] = %d\n", i, compressedString[i]);
+    printf("sizeOfContentInBits = %d\n", sizeOfContentInBits);
+    for(int i = 0; i < BYTESIZE(sizeOfContentInBits); i++) {
+        printf("compressedContent[%d] = %d\n", i, compressedContent[i]);
     }
     
     
     printf("\nEncoding phase....\n");
     
     // Encode
-    typedef struct encodingHeaderItem encodingHeaderItem;
+
+    encodingHeaderItem* encodingHeader; 
+    int sizeOfEncodingHeader = buildEncodingHeader(&encodingHeader, encodingTable);
     
-    struct encodingHeaderItem {
-        uint16_t bin : 12;
-        uint16_t binSize : 4;
-    };
-    
-    encodingHeaderItem* encodingHeader = (encodingHeaderItem *) calloc(NUM_CHARS, sizeof(encodingHeaderItem));
-    
-    for(int i = 0; i < size; i++) {
-        encodingHeaderItem item;
-        item.bin = heap[i]->bin;
-        item.binSize = heap[i]->binSize;
-        encodingHeader[heap[i]->character] = item;
-    }
-    
+    unsigned char* outputBinary;
     int sizeOfLengthHeader = sizeof(int);
-    int sizeOfEncodingHeader = NUM_CHARS * sizeof(encodingHeaderItem);
-    int sizeOfContentInBytes = BYTESIZE(sizeInBits);
     
-    unsigned char* outputBinary = (unsigned char*) calloc(1, sizeOfLengthHeader + sizeOfEncodingHeader + sizeOfContentInBytes);
-    
-    memcpy(outputBinary, &sizeInBits, sizeOfLengthHeader);    
-    memcpy(outputBinary + sizeOfLengthHeader, encodingHeader, sizeOfEncodingHeader);
-    memcpy(outputBinary + sizeOfLengthHeader + sizeOfEncodingHeader, compressedString, sizeOfContentInBytes);
-    
-    
+    buildOutputBinary(&outputBinary, compressedContent, sizeOfContentInBits, encodingHeader, sizeOfEncodingHeader, sizeOfLengthHeader);
     
     
     printf("\nDecoding phase....\n");
     
     // Decode
-    size = 0;
     
     // Step 1. Decode length of content
-    int outputLength;
-    memcpy(&outputLength, outputBinary, sizeOfLengthHeader);
+    int outputLength = decodeLength(outputBinary);
     printf("Length of compressed content in bits = %d\n", outputLength);
     
+    
     // Step 2. Decode Huffman encoding
-    size = 0;
-    for(int i = 0; i < NUM_CHARS; i++) {
-        encodingHeaderItem item;
-        memcpy(&item, outputBinary + sizeOfLengthHeader + i * sizeof(encodingHeaderItem), sizeof(encodingHeaderItem));
-        if(0 != item.binSize) {
-            Node *node = (Node *) calloc(1, sizeof(Node));
-            node->character = (unsigned char) i;
-            node->bin = item.bin;
-            node->binSize = item.binSize;
-            heap[size++] = node;
-        }
-    }
+    void *decodedEncodingTable = decodeEncoding(outputBinary);
+    
     
     for(int i = 0; i < size ; i++) {
         printf("(%c, %d, %d)\n", heap[i]->character, heap[i]->bin, heap[i]->binSize);
     }
     
     // Step 3. Decode original string
-    uint8_t *binary = (uint8_t *) calloc(1, BYTESIZE(outputLength));
-    memcpy(binary, outputBinary + sizeOfLengthHeader + NUM_CHARS * sizeof(encodingHeaderItem), BYTESIZE(outputLength));
+    decodeInputString(outputBinary, outputLength);
     
+    
+
+    
+    return 0;
+}
+
+
+void decodeInputString(unsigned char* outputBinary, int outputLength)
+{
+    uint8_t *binary = (uint8_t *) calloc(1, BYTESIZE(outputLength));
+    memcpy(binary, outputBinary + sizeof(int) + NUM_CHARS * sizeof(encodingHeaderItem), BYTESIZE(outputLength));
     
     uint8_t value = 0, len = 0;
     for(int i = 0; i < outputLength; i++) {
@@ -159,9 +140,81 @@ int main(void)
             len = 0;
         }
     }
+}
 
+
+void* decodeEncoding(unsigned char* outputBinary)
+{
+    size = 0;
+    for(int i = 0; i < NUM_CHARS; i++) {
+        encodingHeaderItem item;
+        memcpy(&item, outputBinary + sizeof(int) + i * sizeof(encodingHeaderItem), sizeof(encodingHeaderItem));
+        if(0 != item.binSize) {
+            Node *node = (Node *) calloc(1, sizeof(Node));
+            node->character = (unsigned char) i;
+            node->bin = item.bin;
+            node->binSize = item.binSize;
+            heap[size++] = node;
+        }
+    }
+    return heap;
+}
+
+int decodeLength(unsigned char* outputBinary)
+{   
+    int len;
+    memcpy(&len, outputBinary, sizeof(int));
+    return len;
+}
+
+void buildOutputBinary(unsigned char** outputBinary, unsigned char* compressedContent, int sizeOfContentInBits, encodingHeaderItem* encodingHeader, int sizeOfEncodingHeader, int sizeOfLengthHeader)
+{        
+    unsigned char* out = (unsigned char*) calloc(1, sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits));
     
-    return 0;
+    memcpy(out, &sizeOfContentInBits, sizeOfLengthHeader);    
+    memcpy(out + sizeOfLengthHeader, encodingHeader, sizeOfEncodingHeader);
+    memcpy(out + sizeOfLengthHeader + sizeOfEncodingHeader, compressedContent, BYTESIZE(sizeOfContentInBits));
+    
+    *outputBinary = out;
+}
+
+
+int buildEncodingHeader(encodingHeaderItem **encodingHeader, void *encodingTable)
+{
+    Node **tree = (Node **)encodingTable;
+    int sizeOfHeader = NUM_CHARS * sizeof(encodingHeaderItem);
+    encodingHeaderItem* header = (encodingHeaderItem *) calloc(1, sizeOfHeader); 
+    for(int i = 0; i < size; i++) {
+        encodingHeaderItem item;
+        item.bin = tree[i]->bin;
+        item.binSize = tree[i]->binSize;
+        header[tree[i]->character] = item;
+    }
+    *encodingHeader = header;
+    return sizeOfHeader;
+}
+
+void* buildEncodingTable(void)
+{
+    while(size != 1) {
+        Node* node = createInternalNode(pop(), pop());
+        insertNode(node);
+        //printf("===================================\n");
+        //printLevelOrder(heap);
+    }
+    
+    binarize();
+    flatten(pop());
+    
+    return heap;
+}
+
+void registerChar(char ch, int weight)
+{
+    Node *node = (Node *) calloc(1, sizeof(Node));
+    node->weight = weight;
+    node->character = ch;
+    insertNode(node);
 }
 
 
@@ -190,40 +243,46 @@ int getNextBit(unsigned char *binary, int bitSize)
     return -1;
 }
 
-
-unsigned char* serialize(char *inputString, int strSize, int *bitSize)
+// int serialize(inputStr, strlen(inputStr), encodingTable, &compressedContent)
+int serialize(char *inputString, int strSize, void *encodingTable, unsigned char **compressedContent)
 {
-    int shift = 7, bufferCursor = 0, sizeInBits = 0;
+    int shift = 7, bufferCursor = 0, sizeOfContentInBits = 0;
     unsigned char *buffer = (unsigned char *) calloc(1, strSize * sizeof(int));
     
     for(int i = 0; i < strSize; i++) {
-        Node* node = getNodeByChar(inputString[i]);
-        for(int j = node->binSize - 1; j >= 0 ; j--) {
-            if(1 == GET_BIT(node->bin, j)) {
+        uint16_t repr;
+        uint8_t reprSize; 
+        int status = getCharRepr(inputString[i], encodingTable, &repr, &reprSize);
+        for(int j = reprSize - 1; j >= 0 ; j--) {
+            if(1 == GET_BIT(repr, j)) {
                 buffer[bufferCursor] |= (1 << shift);
             }
             if(--shift < 0) {
                 shift = 7;
                 bufferCursor++;
             }
-            ++sizeInBits;
+            ++sizeOfContentInBits;
         }
     }
     
-    buffer = realloc(buffer, BYTESIZE(sizeInBits));
-    *bitSize = sizeInBits;
+    buffer = realloc(buffer, BYTESIZE(sizeOfContentInBits));
+    *compressedContent = buffer;
     
-    return buffer;
+    return sizeOfContentInBits;
 }
 
-Node* getNodeByChar(char c)
+int getCharRepr(char c, void *encodingTable, uint16_t *repr, uint8_t *reprSize)
 {
+    Node **tree = (Node **)encodingTable;
+    
     for(int i = 0; i < size; i++) {
-        if(heap[i]->character == c) {
-            return heap[i];
+        if(tree[i]->character == c) {
+            *repr = tree[i]->bin;
+            *reprSize = tree[i]->binSize;
+            return 0;
         }
     }
-    return NULL;
+    return -1;
 }
 
 void flatten(Node *node)
@@ -363,9 +422,4 @@ void printLevelOrder(Node **root) {
         printf("\n");
     }
 }
-
-
-
-
-
 
