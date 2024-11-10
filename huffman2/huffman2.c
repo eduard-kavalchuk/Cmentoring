@@ -24,8 +24,8 @@ struct Node {
 typedef struct encodingHeaderItem encodingHeaderItem;
     
 struct encodingHeaderItem {
-    uint16_t bin : 12;
-    uint16_t binSize : 4;
+    uint16_t bin;
+    uint16_t binSize;
 };
 
 
@@ -59,6 +59,7 @@ uint8_t* restoreTextContent(unsigned char* archive, int contentLengthInBits, voi
 uint8_t* extractBinaryContent(unsigned char* archive, int contentLengthInBits);
 void compress(char *filename);
 void extract(char *filename);
+long getFileSize(char *filename);
 
 
 int main(int argc, char *argv[])
@@ -92,20 +93,35 @@ int main(int argc, char *argv[])
 }
 
 
-void extract(char *filename)
+long getFileSize(char *filename)
 {
     FILE *fp = fopen(filename, "rb"); 
     if (fp == NULL) {
-        return; // Error opening file
+        return -1; // Error opening file
     }
 
     fseek(fp, 0L, SEEK_END); // Move file pointer to the end
     long filesize = ftell(fp); // Get the current position (file size)
     fclose(fp);
     
+    return filesize;
+}
+
+
+void extract(char *filename)
+{    
+    long filesize = getFileSize(filename);
+    if (filesize == -1) {
+        exit(0);
+    }
+    
     uint8_t *archive = (uint8_t *) calloc(1, filesize);
     
-    fp = fopen(filename, "rb");
+    FILE *fp = fopen(filename, "rb");
+    if (fp == NULL) {
+        exit(0);
+    }
+    
     fread(archive, sizeof(uint8_t), filesize, fp);
     fclose(fp);
     
@@ -122,6 +138,7 @@ void extract(char *filename)
     
     // Step 3. Decode original string
     uint8_t *restoredBinContent = extractBinaryContent(archive, contentLengthInBits);
+    printf("\nsize = %d\n", size);
     uint8_t *content = restoreTextContent(restoredBinContent, contentLengthInBits, decodedEncodingTable);
     printf("%s\n", content);
 }
@@ -129,7 +146,21 @@ void extract(char *filename)
 
 void compress(char *filename)
 {
-    char *inputStr = "preved medved";
+    //char *inputStr = "preved medve\r\n123\r\nsdrt\nw45";
+    
+    long sz =  getFileSize(filename);
+    
+    char *inputStr = (char *) calloc(1, sz + 1);
+    FILE *fp;
+    
+    fp = fopen(filename, "rb"); 
+    if (fp == NULL) {
+        return; // Error opening file
+    }
+    fread(inputStr, sizeof(char), sz + 1, fp);
+    fclose(fp);
+    
+    printf("%s\n", inputStr);
     
     char charFrequencies[NUM_CHARS] = {0};
     
@@ -148,11 +179,18 @@ void compress(char *filename)
     unsigned char* compressedContent;
     int sizeOfContentInBits = serialize(inputStr, encodingTable, &compressedContent);
     
+    printf("\nCompressed binary content\n");
+    for(int i = 0; i < BYTESIZE(sizeOfContentInBits); i++) {
+        printf("%d ", compressedContent[i]);
+    }
+    printf("End\n");
+    
     printf("sizeOfContentInBits = %d\n", sizeOfContentInBits);
+    /*
     for(int i = 0; i < BYTESIZE(sizeOfContentInBits); i++) {
         printf("compressedContent[%d] = %d\n", i, compressedContent[i]);
     }
-    
+    */
     
     printf("\nEncoding phase...\n");
     
@@ -168,7 +206,7 @@ void compress(char *filename)
     
     buildOutputBinary(&archive, compressedContent, sizeOfContentInBits, encodingHeader, sizeOfEncodingHeader, sizeOfLengthHeader);
     
-    FILE *fp = fopen(filename, "wb"); 
+    fp = fopen(strcat(filename, ".huf"), "wb"); 
     if (fp == NULL) {
         return; // Error opening file
     }
@@ -186,12 +224,22 @@ uint8_t* extractBinaryContent(unsigned char* archive, int contentLengthInBits)
     
     memcpy(restoredBinaryContent, archive + sizeof(int) + NUM_CHARS * sizeof(encodingHeaderItem), BYTESIZE(contentLengthInBits));
     
+    
+    
     return restoredBinaryContent;
 }
 
 
 uint8_t* restoreTextContent(unsigned char* binContent, int contentLengthInBits, void *encodingTable)
 {
+    /*
+    printf("\nRestored binary content:\n");
+    for(int i = 0; i < BYTESIZE(contentLengthInBits); i++) {
+        printf("%d ", binContent[i]);
+    }
+    printf("End.\n");
+    */
+    
     uint8_t *restoredTextContent = (uint8_t *) calloc(1, contentLengthInBits + 1);
     int totalCharsRestored = 0, binCode = 0, codeLen = 0;
     
@@ -305,7 +353,7 @@ void registerChar(char ch, int weight, uint16_t bin, uint8_t binSize)
 
 int getNextBit(unsigned char *binary, int bitSize)
 {
-    static unsigned char cursor = 0;
+    static int cursor = 0;
     
     for(; cursor < bitSize; cursor++) {
         uint8_t byte = binary[cursor / 8];
@@ -325,20 +373,25 @@ int serialize(char *inputString, void *encodingTable, unsigned char **compressed
         uint16_t repr;
         uint8_t reprSize; 
         int status = getCharRepr(inputString[i], encodingTable, &repr, &reprSize);
+        
+        if(status == -1) {
+            printf("status == -1\n");
+        }
         for(int j = reprSize - 1; j >= 0 ; j--) {
             if(1 == GET_BIT(repr, j)) {
                 buffer[bufferCursor] |= (1 << shift);
             }
-            if(--shift < 0) {
+            --shift;
+            if(shift < 0) {
                 shift = 7;
                 bufferCursor++;
             }
             ++sizeOfContentInBits;
         }
+        //printf("(%c, %d, %d)\n", inputString[i], repr, reprSize);
     }
     
-    buffer = realloc(buffer, BYTESIZE(sizeOfContentInBits));
-    *compressedContent = buffer;
+    *compressedContent = realloc(buffer, BYTESIZE(sizeOfContentInBits));
     
     return sizeOfContentInBits;
 }
