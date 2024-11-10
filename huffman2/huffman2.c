@@ -57,15 +57,15 @@ int restoreContentLength(unsigned char* archive);
 void* restoreEncodingTable(unsigned char* archive);
 uint8_t* restoreTextContent(unsigned char* archive, int contentLengthInBits, void *decodedEncodingTable, int *restoredSize);
 uint8_t* extractBinaryContent(unsigned char* archive, int contentLengthInBits);
-void compress(char *filename);
-void extract(char *filename);
+void compress(char *inFile, char *outFile);
+void extract(char *inFile, char *outFile);
 long getFileSize(char *filename);
 
 
 int main(int argc, char *argv[])
 {
     int opt;
-    void (*func)(char *filename);
+    void (*func)(char *inFile, char *outFile);
     
     while ((opt = getopt(argc, argv, "c:x:")) != -1) {
         switch (opt) {
@@ -81,12 +81,12 @@ int main(int argc, char *argv[])
         }
     }
    
-    if((optind != 3) && (argc != 3)) {
+    if((optind != 4) && (argc != 4)) {
         fprintf(stderr, "Usage: %s [-c filename] [-x filename]\n", argv[0]);
         return -1;
     }
     
-    func(argv[2]);
+    func(argv[2], argv[3]);
     
 
     return 0;
@@ -108,16 +108,16 @@ long getFileSize(char *filename)
 }
 
 
-void extract(char *filename)
+void extract(char *inFile, char *outFile)
 {    
-    long filesize = getFileSize(filename);
+    long filesize = getFileSize(inFile);
     if (filesize == -1) {
         exit(0);
     }
     
     uint8_t *archive = (uint8_t *) calloc(1, filesize);
     
-    FILE *fp = fopen(filename, "rb");
+    FILE *fp = fopen(inFile, "rb");
     if (fp == NULL) {
         exit(0);
     }
@@ -141,22 +141,25 @@ void extract(char *filename)
     printf("\nsize = %d\n", size);
     int restoredSize = 0;
     uint8_t *content = restoreTextContent(restoredBinContent, contentLengthInBits, decodedEncodingTable, &restoredSize);
-
-    fwrite(content, sizeof(uint8_t), restoredSize, stderr);
     
+    fp = fopen(outFile, "wb");
+    if (fp == NULL) {
+        exit(0);
+    }
+
+    fwrite(content, sizeof(uint8_t), restoredSize, fp);
+    fclose(fp);
 }
 
 
-void compress(char *filename)
+void compress(char *inFile, char *outFile)
 {
-    //char *inputStr = "preved medve\r\n123\r\nsdrt\nw45";
-    
-    long sz =  getFileSize(filename);
+    long sz =  getFileSize(inFile);
     
     char *inputStr = (char *) calloc(1, sz + 1);
     FILE *fp;
     
-    fp = fopen(filename, "rb"); 
+    fp = fopen(inFile, "rb"); 
     if (fp == NULL) {
         return; // Error opening file
     }
@@ -209,20 +212,19 @@ void compress(char *filename)
     
     buildOutputBinary(&archive, compressedContent, sizeOfContentInBits, encodingHeader, sizeOfEncodingHeader, sizeOfLengthHeader);
     
-    int totalsize = sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits);
-    fwrite(archive, sizeof(uint8_t), totalsize, stderr);
+    //int totalsize = sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits);
+    //fwrite(archive, sizeof(uint8_t), totalsize, stderr);
     
-    /*
-    fp = fopen(strcat(filename, ".huf"), "wb"); 
+    fp = fopen(outFile, "wb"); 
     if (fp == NULL) {
-        return; // Error opening file
+        exit(0); // Error opening file
     }
     
     int totalsize = sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits);
     printf("total size = %d\n", totalsize);
     fwrite(archive, sizeof(uint8_t), totalsize, fp);
     fclose(fp);
-    */
+    
 }
 
 
