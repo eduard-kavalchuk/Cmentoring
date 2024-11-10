@@ -44,7 +44,7 @@ void flatten(Node *node);
 int serialize(char *inputString, void *encodingTable, unsigned char **compressedContent);
 int getCharRepr(char c, void *encodingTable, uint16_t *repr, uint8_t *reprSize);
 int getNextBit(unsigned char *binary, int binSize);
-int findChar(uint8_t value, uint8_t len, void *encodingTable);
+int findChar(int value, uint8_t len, void *encodingTable);
 
 //static char *inputStr = "preved medved";
 Node* heap[2 * NUM_CHARS - 1];
@@ -55,7 +55,7 @@ int buildEncodingHeader(encodingHeaderItem **encodingHeader, void *encodingTable
 void buildOutputBinary(unsigned char** archive, unsigned char* compressedContent, int sizeOfContentInBits, encodingHeaderItem* encodingHeader, int sizeOfEncodingHeader, int sizeOfLengthHeader);
 int restoreContentLength(unsigned char* archive);
 void* restoreEncodingTable(unsigned char* archive);
-uint8_t* restoreTextContent(unsigned char* archive, int contentLengthInBits, void *decodedEncodingTable);
+uint8_t* restoreTextContent(unsigned char* archive, int contentLengthInBits, void *decodedEncodingTable, int *restoredSize);
 uint8_t* extractBinaryContent(unsigned char* archive, int contentLengthInBits);
 void compress(char *filename);
 void extract(char *filename);
@@ -139,8 +139,11 @@ void extract(char *filename)
     // Step 3. Decode original string
     uint8_t *restoredBinContent = extractBinaryContent(archive, contentLengthInBits);
     printf("\nsize = %d\n", size);
-    uint8_t *content = restoreTextContent(restoredBinContent, contentLengthInBits, decodedEncodingTable);
-    printf("%s\n", content);
+    int restoredSize = 0;
+    uint8_t *content = restoreTextContent(restoredBinContent, contentLengthInBits, decodedEncodingTable, &restoredSize);
+
+    fwrite(content, sizeof(uint8_t), restoredSize, stderr);
+    
 }
 
 
@@ -162,7 +165,7 @@ void compress(char *filename)
     
     printf("%s\n", inputStr);
     
-    char charFrequencies[NUM_CHARS] = {0};
+    int charFrequencies[NUM_CHARS] = {0};
     
     for (int i = 0; i < strlen(inputStr); i++) {
         charFrequencies[(int) inputStr[i]] += 1;
@@ -206,6 +209,10 @@ void compress(char *filename)
     
     buildOutputBinary(&archive, compressedContent, sizeOfContentInBits, encodingHeader, sizeOfEncodingHeader, sizeOfLengthHeader);
     
+    int totalsize = sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits);
+    fwrite(archive, sizeof(uint8_t), totalsize, stderr);
+    
+    /*
     fp = fopen(strcat(filename, ".huf"), "wb"); 
     if (fp == NULL) {
         return; // Error opening file
@@ -215,6 +222,7 @@ void compress(char *filename)
     printf("total size = %d\n", totalsize);
     fwrite(archive, sizeof(uint8_t), totalsize, fp);
     fclose(fp);
+    */
 }
 
 
@@ -230,15 +238,15 @@ uint8_t* extractBinaryContent(unsigned char* archive, int contentLengthInBits)
 }
 
 
-uint8_t* restoreTextContent(unsigned char* binContent, int contentLengthInBits, void *encodingTable)
+uint8_t* restoreTextContent(unsigned char* binContent, int contentLengthInBits, void *encodingTable, int *restoredSize)
 {
-    /*
+    
     printf("\nRestored binary content:\n");
     for(int i = 0; i < BYTESIZE(contentLengthInBits); i++) {
         printf("%d ", binContent[i]);
     }
     printf("End.\n");
-    */
+    
     
     uint8_t *restoredTextContent = (uint8_t *) calloc(1, contentLengthInBits + 1);
     int totalCharsRestored = 0, binCode = 0, codeLen = 0;
@@ -256,6 +264,8 @@ uint8_t* restoreTextContent(unsigned char* binContent, int contentLengthInBits, 
     }
     
     restoredTextContent = realloc(restoredTextContent, totalCharsRestored);
+    *restoredSize = totalCharsRestored;
+    printf("totalCharsRestored = %d\n", totalCharsRestored);
     
     return restoredTextContent;
 }
@@ -314,7 +324,7 @@ int buildEncodingHeader(encodingHeaderItem **encodingHeader, void *encodingTable
 }
 
 
-int findChar(uint8_t value, uint8_t len, void *encodingTable)
+int findChar(int value, uint8_t len, void *encodingTable)
 {
     Node **tree = (Node **) encodingTable;
     
@@ -361,6 +371,8 @@ int getNextBit(unsigned char *binary, int bitSize)
         ++cursor;
         return bit;
     }
+    printf("bit is -1");
+    exit(0);
     return -1;
 }
 
