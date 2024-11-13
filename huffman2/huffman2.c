@@ -46,7 +46,7 @@ int getCharRepr(uint8_t c, void *encodingTable, uint16_t *repr, uint8_t *reprSiz
 int getNextBit(unsigned char *binary, int binSize);
 int findChar(uint16_t value, uint16_t len, void *encodingTable);
 
-//static char *inputStr = "preved medved";
+
 Node* heap[2 * NUM_CHARS + 1];
 int size;
 void registerChar(uint8_t ch, int weight, uint16_t bin, uint8_t binSize);
@@ -97,7 +97,7 @@ long getFileSize(char *filename)
 {
     FILE *fp = fopen(filename, "rb"); 
     if (fp == NULL) {
-        return -1; // Error opening file
+        return -1;
     }
 
     fseek(fp, 0L, SEEK_END); // Move file pointer to the end
