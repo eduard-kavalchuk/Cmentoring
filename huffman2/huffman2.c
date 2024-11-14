@@ -34,38 +34,41 @@ Node* createInternalNode(Node *node1, Node *node2);
 int getParentIdx(int childIdx);
 int getLeftChildIdx(int parentIdx);
 int getRightChildIdx(int parentIdx);
-void heapify(int startFromIndex);
+void rebuildHeap(int startFromIndex);
 Node* pop(void);
 void printCurrentLevel(Node **root, int idx, int level);
 void printLevelOrder(Node **root);
 void assignCodesToChars(void);
 void _assignCodesToChars(uint16_t bin, uint8_t binSize, Node *node);
 void flatten(Node *node);
-int serialize(uint8_t *inputString, int strSize, void *encodingTable, unsigned char **compressedContent);
-int getCharRepr(uint8_t c, void *encodingTable, uint16_t *repr, uint8_t *reprSize);
-int getNextBit(unsigned char *binary, int binSize);
-int findChar(uint16_t value, uint16_t len, void *encodingTable);
+int serialize(uint8_t *inputString, int strSize, Node **encodingTable, uint8_t **compressedContent);
+int getCharRepr(uint8_t c, Node **encodingTable, uint16_t *repr, uint8_t *reprSize);
+int getNextBit(uint8_t *binary, int binSize);
+int findChar(uint16_t value, uint16_t len, Node **encodingTable);
 
 
-Node* heap[2 * NUM_CHARS + 1];
+Node* Heap[2 * NUM_CHARS + 1];
 int size;
 void registerChar(uint8_t ch, int weight, uint16_t bin, uint8_t binSize);
 void* buildEncodingTable(void);
-int buildEncodingHeader(encodingHeaderItem **encodingHeader, void *encodingTable);
-void buildOutputBinary(unsigned char** archive, unsigned char* compressedContent, int sizeOfContentInBits, encodingHeaderItem* encodingHeader, int sizeOfEncodingHeader, int sizeOfLengthHeader);
-int restoreContentLength(unsigned char* archive);
-void* restoreEncodingTable(unsigned char* archive);
-uint8_t* restoreTextContent(unsigned char* archive, int contentLengthInBits, void *decodedEncodingTable, int *restoredSize);
-uint8_t* extractBinaryContent(unsigned char* archive, int contentLengthInBits);
-void compress(char *inFile, char *outFile);
-void extract(char *inFile, char *outFile);
+int buildEncodingHeader(encodingHeaderItem **encodingHeader, Node **encodingTable);
+uint8_t* createImage(uint8_t* compressedContent, int sizeOfContentInBits, encodingHeaderItem* encodingHeader, int sizeOfEncodingHeader, int sizeOfLengthHeader);
+int restoreContentLength(uint8_t* archive);
+Node** restoreEncodingTable(uint8_t* archive);
+uint8_t* restoreTextContent(uint8_t* archive, int contentLengthInBits, Node **decodedEncodingTable, int *restoredSize);
+uint8_t* stripHeader(uint8_t* archive, int contentLengthInBits);
+void compress(char *inFile, char *outputBinary);
+void extract(char *inFile, char *outputBinary);
 long getFileSize(char *filename);
+void* gc[2 * NUM_CHARS + 1];
+int gcCounter;
+void freeAll(void);
 
 
 int main(int argc, char *argv[])
 {
     int opt;
-    void (*func)(char *inFile, char *outFile);
+    void (*func)(char *inFile, char *outputBinary);
     
     while ((opt = getopt(argc, argv, "c:x:")) != -1) {
         switch (opt) {
@@ -77,85 +80,82 @@ int main(int argc, char *argv[])
                 break;
             default: /* '?' */
                 fprintf(stderr, "Usage: %s [-c file] [-x file]\n", argv[0]);
-                return -1;
+                exit(EXIT_FAILURE);
         }
     }
    
     if((optind != 4) && (argc != 4)) {
         fprintf(stderr, "Usage: %s [-c filename] [-x filename]\n", argv[0]);
-        return -1;
+        exit(EXIT_FAILURE);
     }
     
     func(argv[2], argv[3]);
     
-
-    return 0;
+    freeAll();
+    
+    exit(EXIT_SUCCESS);
 }
 
 
 long getFileSize(char *filename)
 {
-    FILE *fp = fopen(filename, "rb"); 
-    if (fp == NULL) {
-        return -1;
+    FILE *fp = fopen(filename, "rb");
+    if (NULL == fp) {
+        fprintf(stderr, "Error opening file %s.", filename);
+        freeAll();
+        exit(EXIT_FAILURE);
     }
 
-    fseek(fp, 0L, SEEK_END); // Move file pointer to the end
-    long filesize = ftell(fp); // Get the current position (file size)
+    fseek(fp, 0L, SEEK_END);
+    long filesize = ftell(fp);
     fclose(fp);
     
     return filesize;
 }
 
 
-void compress(char *inFile, char *outFile)
+void compress(char *inFile, char *outputBinary)
 {
-    long sz =  getFileSize(inFile);
-    printf("file size = %lu\n", sz);
+    long numBytes =  getFileSize(inFile);
     
-    uint8_t *inputStr = (uint8_t *) calloc(1, sz + 1);
-    FILE *fp;
-    
-    fp = fopen(inFile, "rb"); 
-    if (fp == NULL) {
-        return; // Error opening file
+    uint8_t *inputBytes = (uint8_t *) calloc(1, numBytes + 1);
+    if(NULL == inputBytes) {
+        fprintf(stderr, "Failed to allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
     }
-    fread(inputStr, sizeof(uint8_t), sz + 1, fp);
+    else {
+        gc[gcCounter++] = (void *) inputBytes;
+    }
+    
+    FILE *fp = fopen(inFile, "rb"); 
+    if (NULL == fp) {
+        fprintf(stderr, "Error opening file %s.", inFile);
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    
+    fread(inputBytes, sizeof(uint8_t), numBytes + 1, fp);
     fclose(fp);
     
     int charFrequencies[NUM_CHARS] = {0};
     
-    for (int i = 0; i < sz; i++) {
-        charFrequencies[(uint32_t) inputStr[i]] += 1;
+    for (int i = 0; i < numBytes; i++) {
+        charFrequencies[inputBytes[i]] += 1;
     }
     
-    for (int ch = 0; ch < NUM_CHARS; ch++) {
-        if (0 == charFrequencies[ch]) continue;
+    for (uint16_t ch = 0; ch < NUM_CHARS; ch++) {
+        if (0 == charFrequencies[ch]) {
+            continue;
+        }
 
         registerChar((uint8_t)ch, charFrequencies[ch], 0, 0);
     }
     
-    void *encodingTable = buildEncodingTable();
+    Node **encodingTable = buildEncodingTable();
 
-    unsigned char* compressedContent;
-    int sizeOfContentInBits = serialize(inputStr, sz, encodingTable, &compressedContent);
-    
-    /*
-    printf("\nCompressed binary content\n");
-    for(int i = 0; i < BYTESIZE(sizeOfContentInBits); i++) {
-        printf("%d ", compressedContent[i]);
-    }
-    printf("End\n");
-    */
-    
-    printf("sizeOfContentInBits = %d\n", sizeOfContentInBits);
-    /*
-    for(int i = 0; i < BYTESIZE(sizeOfContentInBits); i++) {
-        printf("compressedContent[%d] = %d\n", i, compressedContent[i]);
-    }
-    */
-    
-    printf("\nEncoding phase...\n");
+    uint8_t* compressedContent;
+    int sizeOfContentInBits = serialize(inputBytes, numBytes, encodingTable, &compressedContent);
     
     /**************************************
       Encode
@@ -163,40 +163,48 @@ void compress(char *inFile, char *outFile)
     
     encodingHeaderItem* encodingHeader; 
     int sizeOfEncodingHeader = buildEncodingHeader(&encodingHeader, encodingTable);
-    
-    unsigned char* archive;
     int sizeOfLengthHeader = sizeof(int);
+    int imageSize = sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits);
     
-    buildOutputBinary(&archive, compressedContent, sizeOfContentInBits, encodingHeader, sizeOfEncodingHeader, sizeOfLengthHeader);
+    uint8_t* image;
+    image = createImage(compressedContent, sizeOfContentInBits, encodingHeader, sizeOfEncodingHeader, sizeOfLengthHeader);
     
-    //int totalsize = sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits);
-    //fwrite(archive, sizeof(uint8_t), totalsize, stderr);
-    
-    fp = fopen(outFile, "wb"); 
-    if (fp == NULL) {
-        exit(0); // Error opening file
+    fp = fopen(outputBinary, "wb"); 
+    if (NULL == fp) {
+        fprintf(stderr, "Error opening file %s.", outputBinary);
+        freeAll();
+        exit(EXIT_FAILURE);
     }
     
-    int totalsize = sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits);
-    printf("total size = %d\n", totalsize);
-    fwrite(archive, sizeof(uint8_t), totalsize, fp);
+    fwrite(image, sizeof(uint8_t), imageSize, fp);
     fclose(fp);
-    
 }
 
 
-void extract(char *inFile, char *outFile)
+void extract(char *inFile, char *outputBinary)
 {    
     long filesize = getFileSize(inFile);
     if (filesize == -1) {
-        exit(0);
+        fprintf(stderr, "Failed to open file %s.", inFile);
+        freeAll();
+        exit(EXIT_FAILURE);
     }
     
     uint8_t *archive = (uint8_t *) calloc(1, filesize);
+    if(NULL == archive) {
+        fprintf(stderr, "Failed to allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    else {
+        gc[gcCounter++] = (void *) archive;
+    }
     
     FILE *fp = fopen(inFile, "rb");
     if (fp == NULL) {
-        exit(0);
+        fprintf(stderr, "Failed to open file %s.", inFile);
+        freeAll();
+        exit(EXIT_FAILURE);
     }
     
     fread(archive, sizeof(uint8_t), filesize, fp);
@@ -204,24 +212,20 @@ void extract(char *inFile, char *outFile)
     
     // Step 1. Decode length of content
     int contentLengthInBits = restoreContentLength(archive);
-    printf("Length of compressed content in bits = %d\n", contentLengthInBits);
     
     // Step 2. Decode Huffman encoding
-    void *decodedEncodingTable = restoreEncodingTable(archive);
-    
-    for(int i = 0; i < size ; i++) {
-        printf("(%d, %d, %d)\n", heap[i]->character, heap[i]->bin, heap[i]->binSize);
-    }
-    
+    Node **decodedEncodingTable = restoreEncodingTable(archive);
+
     // Step 3. Decode original string
-    uint8_t *restoredBinContent = extractBinaryContent(archive, contentLengthInBits);
-    printf("\nsize = %d\n", size);
+    uint8_t *restoredBinContent = stripHeader(archive, contentLengthInBits);
     int restoredSize = 0;
     uint8_t *content = restoreTextContent(restoredBinContent, contentLengthInBits, decodedEncodingTable, &restoredSize);
     
-    fp = fopen(outFile, "wb");
+    fp = fopen(outputBinary, "wb");
     if (fp == NULL) {
-        exit(0);
+        fprintf(stderr, "Failed to open file %s.", inFile);
+        freeAll();
+        exit(EXIT_FAILURE);
     }
 
     fwrite(content, sizeof(uint8_t), restoredSize, fp);
@@ -229,59 +233,79 @@ void extract(char *inFile, char *outFile)
 }
 
 
-uint8_t* extractBinaryContent(unsigned char* archive, int contentLengthInBits)
+uint8_t* stripHeader(uint8_t* binInput, int contentLengthInBits)
 {
     uint8_t *restoredBinaryContent = (uint8_t *) calloc(1, BYTESIZE(contentLengthInBits));
+    if(NULL == restoredBinaryContent) {
+        fprintf(stderr, "Failed to allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    else {
+        gc[gcCounter++] = (void *) restoredBinaryContent;
+    }
     
-    memcpy(restoredBinaryContent, archive + sizeof(int) + NUM_CHARS * sizeof(encodingHeaderItem), BYTESIZE(contentLengthInBits));
-    
-    
+    memcpy(restoredBinaryContent, binInput + sizeof(int) + NUM_CHARS * sizeof(encodingHeaderItem), BYTESIZE(contentLengthInBits));
     
     return restoredBinaryContent;
 }
 
 
-uint8_t* restoreTextContent(unsigned char* binContent, int contentLengthInBits, void *encodingTable, int *restoredSize)
-{
-    /*
-    printf("\nRestored binary content:\n");
-    for(int i = 0; i < BYTESIZE(contentLengthInBits); i++) {
-        printf("%d ", binContent[i]);
+uint8_t* restoreTextContent(uint8_t* binContent, int contentLengthInBits, Node **encodingTable, int *restoredSize)
+{   
+    uint8_t *content = (uint8_t *) calloc(1, contentLengthInBits + 1);    
+    if(NULL == content) {
+        fprintf(stderr, "Failed to allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
     }
-    printf("End.\n");
-    */
+    else {
+        gc[gcCounter++] = (void *) content;
+    }
     
-    uint8_t *restoredTextContent = (uint8_t *) calloc(1, contentLengthInBits + 1);
-    int totalCharsRestored = 0;
+    
+    int totalBytesRestored = 0;
     uint16_t binCode = 0, codeLen = 0;
     
     for(int i = 0; i < contentLengthInBits; i++) {
-        uint8_t bit = getNextBit(binContent, contentLengthInBits);
+        int bit = getNextBit(binContent, contentLengthInBits);
+        if(-1 == bit) {
+            fprintf(stderr, "Failed to restore content.");
+            exit(EXIT_FAILURE);
+        }
         binCode = (binCode << 1) + bit;
         ++codeLen;
-        /*
-        if(codeLen > 9) {
-            printf("Too large codelen: codeLen = %d, binCode = %d, i = %d. Test aborted\n", codeLen, binCode, i);
-            exit(0);
+        if(codeLen > 15) {
+            fprintf(stderr, "Failed to restore content.");
+            exit(EXIT_FAILURE);
         }
-        */
+        
         int c = findChar(binCode, codeLen, encodingTable);
         if (c != -1) {
-            restoredTextContent[totalCharsRestored++] = (uint8_t) c;
+            content[totalBytesRestored++] = (uint8_t) c;
             binCode = 0;
             codeLen = 0;
         }
     }
     
-    restoredTextContent = realloc(restoredTextContent, totalCharsRestored);
-    *restoredSize = totalCharsRestored;
-    printf("totalCharsRestored = %d\n", totalCharsRestored);
+    uint8_t *realloced = realloc(content, totalBytesRestored);
+    if(NULL == realloced) {
+        fprintf(stderr, "Failed to re-allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    else if (content != realloced){
+        content = realloced;
+        gc[gcCounter++] = (void *) content;
+    }
     
-    return restoredTextContent;
+    *restoredSize = totalBytesRestored;
+    
+    return content;
 }
 
 
-void* restoreEncodingTable(unsigned char* archive)
+Node** restoreEncodingTable(uint8_t* archive)
 {
     size = 0;
     for(int i = 0; i < NUM_CHARS; i++) {
@@ -291,56 +315,71 @@ void* restoreEncodingTable(unsigned char* archive)
             registerChar((uint8_t) i, 0, item.bin, item.binSize);
         }
     }
-    return heap;
+    
+    return Heap;
 }
 
 
-int restoreContentLength(unsigned char* archive)
+int restoreContentLength(uint8_t* archive)
 {   
     int len;
-    
     memcpy(&len, archive, sizeof(int));
     
     return len;
 }
 
 
-void buildOutputBinary(unsigned char** archive, unsigned char* compressedContent, int sizeOfContentInBits, encodingHeaderItem* encodingHeader, int sizeOfEncodingHeader, int sizeOfLengthHeader)
+uint8_t* createImage(uint8_t* compressedContent, int sizeOfContentInBits, encodingHeaderItem* encodingHeader, int sizeOfEncodingHeader, int sizeOfLengthHeader)
 {        
-    unsigned char* out = (unsigned char*) calloc(1, sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits));
+    uint8_t* outputBin = (uint8_t*) calloc(1, sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits));
+    if(NULL == outputBin) {
+        fprintf(stderr, "Failed to allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    else {
+        gc[gcCounter++] = (void *) outputBin;
+    }
     
-    memcpy(out, &sizeOfContentInBits, sizeOfLengthHeader);    
-    memcpy(out + sizeOfLengthHeader, encodingHeader, sizeOfEncodingHeader);
-    memcpy(out + sizeOfLengthHeader + sizeOfEncodingHeader, compressedContent, BYTESIZE(sizeOfContentInBits));
+    memcpy(outputBin, &sizeOfContentInBits, sizeOfLengthHeader);    
+    memcpy(outputBin + sizeOfLengthHeader, encodingHeader, sizeOfEncodingHeader);
+    memcpy(outputBin + sizeOfLengthHeader + sizeOfEncodingHeader, compressedContent, BYTESIZE(sizeOfContentInBits));
     
-    *archive = out;
+    return outputBin;
 }
 
 
-int buildEncodingHeader(encodingHeaderItem **encodingHeader, void *encodingTable)
+int buildEncodingHeader(encodingHeaderItem **encodingHeader, Node **encodingTable)
 {
-    Node **tree = (Node **) encodingTable;
     int sizeOfHeader = NUM_CHARS * sizeof(encodingHeaderItem);
     encodingHeaderItem* header = (encodingHeaderItem *) calloc(1, sizeOfHeader); 
+    if(NULL == header) {
+        fprintf(stderr, "Failed to allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    else {
+        gc[gcCounter++] = (void *) header;
+    }
+    
     for(int i = 0; i < size; i++) {
         encodingHeaderItem item;
-        item.bin = tree[i]->bin;
-        item.binSize = tree[i]->binSize;
-        header[tree[i]->character] = item;
+        item.bin = encodingTable[i]->bin;
+        item.binSize = encodingTable[i]->binSize;
+        header[encodingTable[i]->character] = item;
     }
+    
     *encodingHeader = header;
     
     return sizeOfHeader;
 }
 
 
-int findChar(uint16_t value, uint16_t len, void *encodingTable)
-{
-    Node **tree = (Node **) encodingTable;
-    
+int findChar(uint16_t value, uint16_t len, Node **encodingTable)
+{    
     for(int i = 0; i < size ; i++) {
-        if((tree[i]->bin == value) && (tree[i]->binSize == len))
-            return tree[i]->character;
+        if((encodingTable[i]->bin == value) && (encodingTable[i]->binSize == len))
+            return encodingTable[i]->character;
     }
     
     return -1;
@@ -357,7 +396,7 @@ void* buildEncodingTable(void)
     assignCodesToChars();
     flatten(pop());
     
-    return heap;
+    return Heap;
 }
 
 void registerChar(uint8_t ch, int weight, uint16_t bin, uint8_t binSize)
@@ -371,7 +410,7 @@ void registerChar(uint8_t ch, int weight, uint16_t bin, uint8_t binSize)
 }
 
 
-int getNextBit(unsigned char *binary, int bitSize)
+int getNextBit(uint8_t *binary, int bitSize)
 {
     static int cursor = 0;
     
@@ -381,25 +420,25 @@ int getNextBit(unsigned char *binary, int bitSize)
         ++cursor;
         return bit;
     }
-    printf("bit is -1");
-    exit(0);
+
     return -1;
 }
 
-int serialize(uint8_t *inputString, int strSize, void *encodingTable, unsigned char **compressedContent)
+int serialize(uint8_t *inputBytes, int numBytes, Node **encodingTable, uint8_t **compressedContent)
 {
     int shift = 7, bufferCursor = 0, sizeOfContentInBits = 0;
-    uint8_t *buffer = (uint8_t *) calloc(1, strSize * sizeof(int));
+    uint8_t *buffer = (uint8_t *) calloc(1, numBytes * sizeof(int));
     
-    for(int i = 0; i < strSize; i++) {
+    for(int i = 0; i < numBytes; i++) {
         uint16_t repr;
-        uint8_t reprSize; 
-        int status = getCharRepr(inputString[i], encodingTable, &repr, &reprSize);
+        uint8_t reprSize;
         
+        int status = getCharRepr(inputBytes[i], encodingTable, &repr, &reprSize);
         if(status == -1) {
-            printf("status == -1, char = %d\n", inputString[i]);
-            exit(0);
+            fprintf(stderr, "Failed to compress file.");
+            exit(EXIT_FAILURE);
         }
+        
         for(int j = reprSize - 1; j >= 0 ; j--) {
             if(1 == GET_BIT(repr, j)) {
                 buffer[bufferCursor] |= (1 << shift);
@@ -411,22 +450,27 @@ int serialize(uint8_t *inputString, int strSize, void *encodingTable, unsigned c
             }
             ++sizeOfContentInBits;
         }
-        //printf("(%c, %d, %d)\n", inputString[i], repr, reprSize);
     }
     
     *compressedContent = realloc(buffer, BYTESIZE(sizeOfContentInBits));
+    if(NULL == *compressedContent) {
+        fprintf(stderr, "Failed to re-allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    else {
+        gc[gcCounter++] = (void *) *compressedContent;
+    }
     
     return sizeOfContentInBits;
 }
 
-int getCharRepr(uint8_t c, void *encodingTable, uint16_t *repr, uint8_t *reprSize)
-{
-    Node **tree = (Node **)encodingTable;
-    
+int getCharRepr(uint8_t c, Node **encodingTable, uint16_t *repr, uint8_t *reprSize)
+{    
     for(int i = 0; i < size; i++) {
-        if(tree[i]->character == c) {
-            *repr = tree[i]->bin;
-            *reprSize = tree[i]->binSize;
+        if(encodingTable[i]->character == c) {
+            *repr = encodingTable[i]->bin;
+            *reprSize = encodingTable[i]->binSize;
             return 0;
         }
     }
@@ -437,9 +481,8 @@ void flatten(Node *node)
 {
     if (NULL == node) return;
     
-    if ((NULL == node->childNodes[0]) && (NULL == node->childNodes[1])) {      
-        printf("(%d, %d, %d)\n", node->character, node->bin, node->binSize);
-        heap[size++] = node;
+    if ((NULL == node->childNodes[0]) && (NULL == node->childNodes[1])) {
+        Heap[size++] = node;
     }
     
     flatten(node->childNodes[0]);
@@ -467,17 +510,17 @@ void _assignCodesToChars(uint16_t bin, uint8_t binSize, Node *node) {
 
 void assignCodesToChars(void)
 {
-    _assignCodesToChars(0, 0, heap[0]);
+    _assignCodesToChars(0, 0, Heap[0]);
 }
 
 void insertNode(Node* element) {
     int curr = size;
     
-    heap[size++] = element;
-    while (curr > 0 && heap[getParentIdx(curr)]->weight > heap[curr]->weight) {
-        Node *temp = heap[getParentIdx(curr)];
-        heap[getParentIdx(curr)] = heap[curr];
-        heap[curr] = temp;
+    Heap[size++] = element;
+    while (curr > 0 && Heap[getParentIdx(curr)]->weight > Heap[curr]->weight) {
+        Node *temp = Heap[getParentIdx(curr)];
+        Heap[getParentIdx(curr)] = Heap[curr];
+        Heap[curr] = temp;
         curr = getParentIdx(curr);
     }
 }
@@ -485,6 +528,15 @@ void insertNode(Node* element) {
 Node* createInternalNode(Node *node1, Node *node2)
 {
     Node *node = (Node *) calloc(1, sizeof(Node));
+    if(NULL == node) {
+        fprintf(stderr, "Failed to allocate memory.");
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    else {
+        gc[gcCounter++] = (void *) node;
+    }
+    
     node->weight = node1->weight + node2->weight;
     node->character = NUM_CHARS + 1;
     node->childNodes[0] = node1;
@@ -495,16 +547,16 @@ Node* createInternalNode(Node *node1, Node *node2)
 
 Node* pop(void)
 {
-    Node *ret = heap[0];
+    Node *ret = Heap[0];
     
-    heap[0] = heap[size - 1];
+    Heap[0] = Heap[size - 1];
     size--;
-    heapify(0);
+    rebuildHeap(0);
     
     return ret;
 }
 
-void heapify(int index) {
+void rebuildHeap(int index) {
     if (size <= 1)
         return;
     
@@ -513,19 +565,25 @@ void heapify(int index) {
     
     int smallest = index; 
     
-    if (left < size && heap[left]->weight < heap[index]->weight )
+    if (left < size && Heap[left]->weight < Heap[index]->weight)
         smallest = left; 
     
-    if (right < size && heap[right]->weight  < heap[smallest]->weight ) 
+    if (right < size && Heap[right]->weight  < Heap[smallest]->weight) 
         smallest = right; 
 
     if (smallest != index) 
     { 
-        Node *temp = heap[index];
-        heap[index] = heap[smallest];
-        heap[smallest] = temp;
-        heapify(smallest); 
+        Node *temp = Heap[index];
+        Heap[index] = Heap[smallest];
+        Heap[smallest] = temp;
+        rebuildHeap(smallest); 
     }
+}
+
+void freeAll(void)
+{
+    for(int i = 0; i < gcCounter; i++)
+        free(gc[i]);
 }
 
 int getParentIdx(int i) {
