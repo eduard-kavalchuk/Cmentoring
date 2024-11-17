@@ -13,6 +13,7 @@
 #define GET_BIT(value, pos) ((((value) >> (pos)) & 1) == 1 ? 1 : 0)
 #define BYTESIZE(sizeOfContentInBits) ((sizeOfContentInBits) / 8 + MIN((sizeOfContentInBits) % 8, 1))
 #define BIT_COUNT(value) (value != 0 ? (int)log2(value) + 1 : 0)
+#define MAX_HEAP_SIZE (2 * NUM_CHARS - 1)
 
 typedef struct Node Node;
 
@@ -50,7 +51,7 @@ int getNextBit(uint8_t *binary, int binSize);
 int findChar(uint16_t value, uint16_t len, Node **encodingTable);
 
 
-Node* Heap[2 * NUM_CHARS + 1];
+Node* Heap[MAX_HEAP_SIZE];
 int size;
 void registerChar(uint8_t ch, int weight, uint16_t bin, uint8_t binSize);
 void* buildEncodingTable(void);
@@ -63,7 +64,7 @@ uint8_t* stripHeader(uint8_t* archive, int contentLengthInBits);
 void compress(char *inFile, char *outputBinary);
 void extract(char *inFile, char *outputBinary);
 long getFileSize(char *filename);
-void* gc[2 * NUM_CHARS + 1];
+void* gc[MAX_HEAP_SIZE + 32];
 int gcCounter;
 void freeAll(void);
 

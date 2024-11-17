@@ -330,6 +330,15 @@ void* buildEncodingTable(void)
 void registerChar(uint8_t ch, int weight, uint16_t bin, uint8_t binSize)
 {
     Node *node = (Node *) calloc(1, sizeof(Node));
+    if(NULL != node) {
+        gc[gcCounter++] = (void *) node;
+    }
+    else {
+        fprintf(stderr, "Failed to allocate memory in line %d\n", __LINE__);
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
+    
     node->weight = weight;
     node->character = ch;
     node->bin = bin;
