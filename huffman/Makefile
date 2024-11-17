@@ -1,5 +1,5 @@
 all:
-	gcc -Wall huffman2.c
+	gcc -Wall huffman.c
     
 test:
 	./a -c ./test/huffman.c ./test/out
