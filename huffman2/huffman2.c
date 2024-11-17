@@ -101,7 +101,7 @@ long getFileSize(char *filename)
 {
     FILE *fp = fopen(filename, "rb");
     if (NULL == fp) {
-        fprintf(stderr, "Error opening file %s.", filename);
+        fprintf(stderr, "Error opening file %s\n", filename);
         freeAll();
         exit(EXIT_FAILURE);
     }
@@ -117,20 +117,20 @@ long getFileSize(char *filename)
 void compress(char *inFile, char *outputBinary)
 {
     long numBytes =  getFileSize(inFile);
+    uint8_t *inputBytes;
     
-    uint8_t *inputBytes = (uint8_t *) calloc(1, numBytes + 1);
-    if(NULL == inputBytes) {
-        fprintf(stderr, "Failed to allocate memory.");
-        freeAll();
-        exit(EXIT_FAILURE);
+    if((inputBytes = (uint8_t *) calloc(1, numBytes + 1))) {
+        gc[gcCounter++] = (void *) inputBytes;
     }
     else {
-        gc[gcCounter++] = (void *) inputBytes;
+        fprintf(stderr, "Failed to allocate memory in line %d\n", __LINE__);
+        freeAll();
+        exit(EXIT_FAILURE);
     }
     
     FILE *fp = fopen(inFile, "rb"); 
     if (NULL == fp) {
-        fprintf(stderr, "Error opening file %s.", inFile);
+        fprintf(stderr, "Error opening file %s\n", inFile);
         freeAll();
         exit(EXIT_FAILURE);
     }
@@ -156,11 +156,7 @@ void compress(char *inFile, char *outputBinary)
 
     uint8_t* compressedContent;
     int sizeOfContentInBits = serialize(inputBytes, numBytes, encodingTable, &compressedContent);
-    
-    /**************************************
-      Encode
-    **************************************/
-    
+
     encodingHeaderItem* encodingHeader; 
     int sizeOfEncodingHeader = buildEncodingHeader(&encodingHeader, encodingTable);
     int sizeOfLengthHeader = sizeof(int);
@@ -171,7 +167,7 @@ void compress(char *inFile, char *outputBinary)
     
     fp = fopen(outputBinary, "wb"); 
     if (NULL == fp) {
-        fprintf(stderr, "Error opening file %s.", outputBinary);
+        fprintf(stderr, "Error opening file %s\n", outputBinary);
         freeAll();
         exit(EXIT_FAILURE);
     }
@@ -185,24 +181,24 @@ void extract(char *inFile, char *outputBinary)
 {    
     long filesize = getFileSize(inFile);
     if (filesize == -1) {
-        fprintf(stderr, "Failed to open file %s.", inFile);
+        fprintf(stderr, "Failed to open file %s\n", inFile);
         freeAll();
         exit(EXIT_FAILURE);
     }
     
     uint8_t *archive = (uint8_t *) calloc(1, filesize);
-    if(NULL == archive) {
-        fprintf(stderr, "Failed to allocate memory.");
-        freeAll();
-        exit(EXIT_FAILURE);
+    if(NULL != archive) {
+        gc[gcCounter++] = (void *) archive;
     }
     else {
-        gc[gcCounter++] = (void *) archive;
+        fprintf(stderr, "Failed to allocate memory in line %d\n", __LINE__);
+        freeAll();
+        exit(EXIT_FAILURE);
     }
     
     FILE *fp = fopen(inFile, "rb");
     if (fp == NULL) {
-        fprintf(stderr, "Failed to open file %s.", inFile);
+        fprintf(stderr, "Failed to open file %s\n", inFile);
         freeAll();
         exit(EXIT_FAILURE);
     }
@@ -210,20 +206,17 @@ void extract(char *inFile, char *outputBinary)
     fread(archive, sizeof(uint8_t), filesize, fp);
     fclose(fp);
     
-    // Step 1. Decode length of content
     int contentLengthInBits = restoreContentLength(archive);
     
-    // Step 2. Decode Huffman encoding
     Node **decodedEncodingTable = restoreEncodingTable(archive);
 
-    // Step 3. Decode original string
     uint8_t *restoredBinContent = stripHeader(archive, contentLengthInBits);
     int restoredSize = 0;
     uint8_t *content = restoreTextContent(restoredBinContent, contentLengthInBits, decodedEncodingTable, &restoredSize);
     
     fp = fopen(outputBinary, "wb");
     if (fp == NULL) {
-        fprintf(stderr, "Failed to open file %s.", inFile);
+        fprintf(stderr, "Failed to open file %s\n", inFile);
         freeAll();
         exit(EXIT_FAILURE);
     }
@@ -236,15 +229,15 @@ void extract(char *inFile, char *outputBinary)
 uint8_t* stripHeader(uint8_t* binInput, int contentLengthInBits)
 {
     uint8_t *restoredBinaryContent = (uint8_t *) calloc(1, BYTESIZE(contentLengthInBits));
-    if(NULL == restoredBinaryContent) {
-        fprintf(stderr, "Failed to allocate memory.");
+    if(restoredBinaryContent != NULL) {
+        gc[gcCounter++] = (void *) restoredBinaryContent;
+    }  
+    else {
+        fprintf(stderr, "Failed to allocate memory in line %d\n", __LINE__);
         freeAll();
         exit(EXIT_FAILURE);
     }
-    else {
-        gc[gcCounter++] = (void *) restoredBinaryContent;
-    }
-    
+
     memcpy(restoredBinaryContent, binInput + sizeof(int) + NUM_CHARS * sizeof(encodingHeaderItem), BYTESIZE(contentLengthInBits));
     
     return restoredBinaryContent;
@@ -254,15 +247,11 @@ uint8_t* stripHeader(uint8_t* binInput, int contentLengthInBits)
 uint8_t* restoreTextContent(uint8_t* binContent, int contentLengthInBits, Node **encodingTable, int *restoredSize)
 {   
     uint8_t *content = (uint8_t *) calloc(1, contentLengthInBits + 1);    
-    if(NULL == content) {
-        fprintf(stderr, "Failed to allocate memory.");
+    if(content == NULL) {
+        fprintf(stderr, "Failed to allocate memory in line %d\n", __LINE__);
         freeAll();
         exit(EXIT_FAILURE);
     }
-    else {
-        gc[gcCounter++] = (void *) content;
-    }
-    
     
     int totalBytesRestored = 0;
     uint16_t binCode = 0, codeLen = 0;
@@ -270,13 +259,15 @@ uint8_t* restoreTextContent(uint8_t* binContent, int contentLengthInBits, Node *
     for(int i = 0; i < contentLengthInBits; i++) {
         int bit = getNextBit(binContent, contentLengthInBits);
         if(-1 == bit) {
-            fprintf(stderr, "Failed to restore content.");
+            fprintf(stderr, "Failed to restore content.\n");
+            freeAll();
             exit(EXIT_FAILURE);
         }
         binCode = (binCode << 1) + bit;
         ++codeLen;
         if(codeLen > 15) {
-            fprintf(stderr, "Failed to restore content.");
+            fprintf(stderr, "Failed to restore content.\n");
+            freeAll();
             exit(EXIT_FAILURE);
         }
         
@@ -288,18 +279,15 @@ uint8_t* restoreTextContent(uint8_t* binContent, int contentLengthInBits, Node *
         }
     }
     
-    uint8_t *realloced = realloc(content, totalBytesRestored);
-    if(NULL == realloced) {
-        fprintf(stderr, "Failed to re-allocate memory.");
+    if ((content = (uint8_t *) realloc(content, totalBytesRestored))) {
+        *restoredSize = totalBytesRestored;
+        gc[gcCounter++] = (void *) content;
+    }
+    else {
+        fprintf(stderr, "Failed to re-allocate memory in line %d\n", __LINE__);
         freeAll();
         exit(EXIT_FAILURE);
     }
-    else if (content != realloced){
-        content = realloced;
-        gc[gcCounter++] = (void *) content;
-    }
-    
-    *restoredSize = totalBytesRestored;
     
     return content;
 }
@@ -333,7 +321,7 @@ uint8_t* createImage(uint8_t* compressedContent, int sizeOfContentInBits, encodi
 {        
     uint8_t* outputBin = (uint8_t*) calloc(1, sizeOfLengthHeader + sizeOfEncodingHeader + BYTESIZE(sizeOfContentInBits));
     if(NULL == outputBin) {
-        fprintf(stderr, "Failed to allocate memory.");
+        fprintf(stderr, "Failed to allocate memory in line %d\n", __LINE__);
         freeAll();
         exit(EXIT_FAILURE);
     }
@@ -354,7 +342,7 @@ int buildEncodingHeader(encodingHeaderItem **encodingHeader, Node **encodingTabl
     int sizeOfHeader = NUM_CHARS * sizeof(encodingHeaderItem);
     encodingHeaderItem* header = (encodingHeaderItem *) calloc(1, sizeOfHeader); 
     if(NULL == header) {
-        fprintf(stderr, "Failed to allocate memory.");
+        fprintf(stderr, "Failed to allocate memory in line %d\n", __LINE__);
         freeAll();
         exit(EXIT_FAILURE);
     }
@@ -428,6 +416,11 @@ int serialize(uint8_t *inputBytes, int numBytes, Node **encodingTable, uint8_t *
 {
     int shift = 7, bufferCursor = 0, sizeOfContentInBits = 0;
     uint8_t *buffer = (uint8_t *) calloc(1, numBytes * sizeof(int));
+    if(NULL == buffer) {
+        fprintf(stderr, "Failed to re-allocate memory in line %d\n", __LINE__);
+        freeAll();
+        exit(EXIT_FAILURE);
+    }
     
     for(int i = 0; i < numBytes; i++) {
         uint16_t repr;
@@ -435,7 +428,7 @@ int serialize(uint8_t *inputBytes, int numBytes, Node **encodingTable, uint8_t *
         
         int status = getCharRepr(inputBytes[i], encodingTable, &repr, &reprSize);
         if(status == -1) {
-            fprintf(stderr, "Failed to compress file.");
+            fprintf(stderr, "Failed to compress file.\n");
             exit(EXIT_FAILURE);
         }
         
@@ -452,14 +445,14 @@ int serialize(uint8_t *inputBytes, int numBytes, Node **encodingTable, uint8_t *
         }
     }
     
-    *compressedContent = realloc(buffer, BYTESIZE(sizeOfContentInBits));
-    if(NULL == *compressedContent) {
-        fprintf(stderr, "Failed to re-allocate memory.");
+    if((*compressedContent = (uint8_t *) realloc(buffer, BYTESIZE(sizeOfContentInBits)))) {
+        gc[gcCounter++] = (void *) *compressedContent;
+    }
+    else
+    {
+        fprintf(stderr, "Failed to re-allocate memory in line %d\n", __LINE__);
         freeAll();
         exit(EXIT_FAILURE);
-    }
-    else {
-        gc[gcCounter++] = (void *) *compressedContent;
     }
     
     return sizeOfContentInBits;
@@ -528,13 +521,13 @@ void insertNode(Node* element) {
 Node* createInternalNode(Node *node1, Node *node2)
 {
     Node *node = (Node *) calloc(1, sizeof(Node));
-    if(NULL == node) {
-        fprintf(stderr, "Failed to allocate memory.");
-        freeAll();
-        exit(EXIT_FAILURE);
+    if(NULL != node) {
+        gc[gcCounter++] = (void *) node;
     }
     else {
-        gc[gcCounter++] = (void *) node;
+        fprintf(stderr, "Failed to allocate memory in line %d\n", __LINE__);
+        freeAll();
+        exit(EXIT_FAILURE);
     }
     
     node->weight = node1->weight + node2->weight;
@@ -582,8 +575,9 @@ void rebuildHeap(int index) {
 
 void freeAll(void)
 {
-    for(int i = 0; i < gcCounter; i++)
+    for(int i = 0; i < gcCounter; i++) {
         free(gc[i]);
+    }
 }
 
 int getParentIdx(int i) {
@@ -597,8 +591,6 @@ int getLeftChildIdx(int i) {
 int getRightChildIdx(int i) {
     return (2 * i + 2);
 }
-
-
 
 void printCurrentLevel(Node **root, int idx, int level) {
     if (idx >= size)
@@ -617,12 +609,10 @@ void printCurrentLevel(Node **root, int idx, int level) {
     }
 }
 
-
 int height(void)
 {
     return (int)log2(size) + 1;
 }
-
 
 void printLevelOrder(Node **root) {
     int h = height();
@@ -632,4 +622,3 @@ void printLevelOrder(Node **root) {
         printf("\n");
     }
 }
-
